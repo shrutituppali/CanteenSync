@@ -51,6 +51,7 @@ const menuItems = [
 
 let cart = [];
 let currentFilter = "all";
+let inventoryData = [];
 
 let currentOrder = {
     id: null,
@@ -61,48 +62,83 @@ let currentOrder = {
 function renderMenu() {
     const grid = document.getElementById("menuGrid");
 
-    if (!grid) {
-        return;
-    }
+    if (!grid) return;
 
     const filteredItems = currentFilter === "all"
         ? menuItems
         : menuItems.filter(item => item.stall === currentFilter);
 
-    grid.innerHTML = filteredItems.map(item => `
-        <div class="menu-card">
+    grid.innerHTML = filteredItems.map(item => {
+        const inventoryItem = inventoryData.find(
+            stockItem => stockItem.item_id === item.id
+        );
 
-            <div class="food-image">
-                ${item.icon}
-            </div>
+        const stock = inventoryItem
+            ? inventoryItem.stock
+            : null;
 
-            <div class="menu-content">
+        let stockText = "Checking stock...";
+        let stockClass = "stock-good";
+        let buttonText = "+ Add";
+        let buttonDisabled = "";
 
-                <span class="stall-name">
-                    ${item.stall}
-                </span>
+        if (stock !== null) {
+            if (stock === 0) {
+                stockText = "Out of Stock";
+                stockClass = "stock-out";
+                buttonText = "Out of Stock";
+                buttonDisabled = "disabled";
+            } else if (
+                stock <= inventoryItem.low_stock_limit
+            ) {
+                stockText = `Low Stock • ${stock} left`;
+                stockClass = "stock-low";
+            } else {
+                stockText = `${stock} available`;
+                stockClass = "stock-good";
+            }
+        }
 
-                <h4>${item.name}</h4>
+        return `
+            <div class="menu-card">
 
-                <p>${item.description}</p>
-
-                <div class="menu-bottom">
-
-                    <span class="price">
-                        ₹${item.price}
-                    </span>
-
-                    <button class="add-btn"
-                        onclick="addToCart(${item.id})">
-                        + Add
-                    </button>
-
+                <div class="food-image">
+                    ${item.icon}
                 </div>
 
-            </div>
+                <div class="menu-content">
 
-        </div>
-    `).join("");
+                    <span class="stall-name">
+                        ${item.stall}
+                    </span>
+
+                    <h4>${item.name}</h4>
+
+                    <p>${item.description}</p>
+
+                    <div class="${stockClass}">
+                        ${stockText}
+                    </div>
+
+                    <div class="menu-bottom">
+
+                        <span class="price">
+                            ₹${item.price}
+                        </span>
+
+                        <button
+                            class="add-btn"
+                            onclick="addToCart(${item.id})"
+                            ${buttonDisabled}>
+                            ${buttonText}
+                        </button>
+
+                    </div>
+
+                </div>
+            </div>
+        `;
+    }).join("");
 }
 
 function filterMenu(filter, button) {
@@ -120,11 +156,31 @@ function filterMenu(filter, button) {
 function addToCart(id) {
     const item = menuItems.find(item => item.id === id);
 
-    if (!item) {
+    if (!item) return;
+
+    const inventoryItem = inventoryData.find(
+        stockItem => stockItem.item_id === id
+    );
+
+    if (!inventoryItem || inventoryItem.stock <= 0) {
+        alert(`${item.name} is currently out of stock.`);
         return;
     }
 
-    const existing = cart.find(cartItem => cartItem.id === id);
+    const existing = cart.find(
+        cartItem => cartItem.id === id
+    );
+
+    const currentQuantity = existing
+        ? existing.quantity
+        : 0;
+
+    if (currentQuantity >= inventoryItem.stock) {
+        alert(
+            `Only ${inventoryItem.stock} ${item.name} available.`
+        );
+        return;
+    }
 
     if (existing) {
         existing.quantity++;
@@ -137,7 +193,8 @@ function addToCart(id) {
 
     updateCart();
 
-    const floatingCart = document.getElementById("floatingCart");
+    const floatingCart =
+        document.getElementById("floatingCart");
 
     if (floatingCart) {
         floatingCart.classList.remove("hidden");
@@ -145,9 +202,14 @@ function addToCart(id) {
 }
 
 function updateCart() {
-    const cartItems = document.getElementById("cartItems");
-    const cartCount = document.getElementById("cartCount");
-    const cartTotal = document.getElementById("cartTotal");
+    const cartItems =
+        document.getElementById("cartItems");
+
+    const cartCount =
+        document.getElementById("cartCount");
+
+    const cartTotal =
+        document.getElementById("cartTotal");
 
     if (!cartItems || !cartCount || !cartTotal) {
         return;
@@ -157,12 +219,15 @@ function updateCart() {
     let count = 0;
 
     if (cart.length === 0) {
+
         cartItems.innerHTML = `
             <div class="pickup-message">
                 Your cart is empty.
             </div>
         `;
+
     } else {
+
         cartItems.innerHTML = cart.map(item => {
 
             total += item.price * item.quantity;
@@ -172,10 +237,15 @@ function updateCart() {
                 <div class="cart-item">
 
                     <div class="cart-item-info">
-                        <strong>${item.name}</strong>
+
+                        <strong>
+                            ${item.name}
+                        </strong>
+
                         <span>
                             ${item.quantity} × ₹${item.price}
                         </span>
+
                     </div>
 
                     <strong>
@@ -184,19 +254,31 @@ function updateCart() {
 
                 </div>
             `;
+
         }).join("");
     }
 
     cartCount.textContent = count;
     cartTotal.textContent = `₹${total}`;
+
+    const floatingCart =
+        document.getElementById("floatingCart");
+
+    if (floatingCart) {
+
+        if (count === 0) {
+            floatingCart.classList.add("hidden");
+        } else {
+            floatingCart.classList.remove("hidden");
+        }
+    }
 }
 
 function openCart() {
-    const cartPanel = document.getElementById("cartPanel");
+    const cartPanel =
+        document.getElementById("cartPanel");
 
-    if (!cartPanel) {
-        return;
-    }
+    if (!cartPanel) return;
 
     cartPanel.classList.remove("hidden");
 
@@ -206,39 +288,51 @@ function openCart() {
 }
 
 function closeCart() {
-    const cartPanel = document.getElementById("cartPanel");
+    const cartPanel =
+        document.getElementById("cartPanel");
 
-    if (!cartPanel) {
-        return;
-    }
+    if (!cartPanel) return;
 
     cartPanel.classList.add("hidden");
 }
 
 async function placeOrder() {
+
     if (cart.length === 0) {
         return;
     }
 
-    const total = cart.reduce((sum, item) => {
-        return sum + item.price * item.quantity;
-    }, 0);
+    const total = cart.reduce(
+        (sum, item) =>
+            sum + item.price * item.quantity,
+        0
+    );
 
     try {
-        const response = await fetch("http://localhost:3000/api/orders", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                total: total
-            })
-        });
+
+        const response = await fetch(
+            "http://localhost:3000/api/orders",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    total: total,
+                    items: cart
+                })
+            }
+        );
 
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.message || "Failed to place order");
+            throw new Error(
+                data.message ||
+                "Failed to place order"
+            );
         }
 
         currentOrder = {
@@ -250,36 +344,60 @@ async function placeOrder() {
         cart = [];
 
         updateCart();
+
         closeCart();
+
         showStudent();
+
         updateOrderDisplay();
+
         await renderStallOrders();
 
-        alert(`Order #${data.order.id} placed successfully!`);
+        await renderInventory();
+
+        alert(
+            `Order #${data.order.id} placed successfully!`
+        );
 
     } catch (error) {
-        console.error("Error placing order:", error);
-        alert("Unable to place order. Make sure the backend is running.");
+
+        console.error(
+            "Error placing order:",
+            error
+        );
+
+        alert(
+            error.message ||
+            "Unable to place order. Make sure the backend is running."
+        );
     }
 }
 
 function updateOrderDisplay() {
-    const badge = document.getElementById("orderStatusBadge");
 
-    if (!badge) {
-        return;
-    }
+    const badge =
+        document.getElementById("orderStatusBadge");
+
+    if (!badge) return;
 
     badge.className = "status-badge";
+
     badge.textContent = currentOrder.status;
 
     if (currentOrder.status === "Placed") {
+
         badge.classList.add("placed");
+
     } else if (currentOrder.status === "Accepted") {
+
         badge.classList.add("placed");
+
     } else if (currentOrder.status === "Preparing") {
+
         badge.classList.add("preparing");
+
     } else if (currentOrder.status === "Ready") {
+
         badge.classList.add("ready");
     }
 
@@ -303,74 +421,95 @@ function updateOrderDisplay() {
         Ready: 3
     };
 
-    const currentIndex = statusIndex[currentOrder.status];
+    const currentIndex =
+        statusIndex[currentOrder.status];
 
     steps.forEach((step, index) => {
-        const element = document.getElementById(step);
 
-        if (!element) {
-            return;
-        }
+        const element =
+            document.getElementById(step);
+
+        if (!element) return;
 
         if (index <= currentIndex) {
+
             element.classList.add("active");
+
         } else {
+
             element.classList.remove("active");
         }
     });
 
     lines.forEach((line, index) => {
-        const element = document.getElementById(line);
 
-        if (!element) {
-            return;
-        }
+        const element =
+            document.getElementById(line);
+
+        if (!element) return;
 
         if (index < currentIndex) {
+
             element.classList.add("active");
+
         } else {
+
             element.classList.remove("active");
         }
     });
 
-    const message = document.getElementById("pickupMessage");
+    const message =
+        document.getElementById("pickupMessage");
 
-    if (!message) {
-        return;
-    }
+    if (!message) return;
 
     if (currentOrder.status === "Placed") {
+
         message.textContent =
             "Your order has been sent to the stall.";
+
     } else if (currentOrder.status === "Accepted") {
+
         message.textContent =
             "The stall has accepted your order.";
+
     } else if (currentOrder.status === "Preparing") {
+
         message.textContent =
             "Your food is being prepared.";
+
     } else if (currentOrder.status === "Ready") {
+
         message.textContent =
             "Your order is ready. Please collect it from the stall.";
     }
 }
 
 async function renderStallOrders() {
-    const stallOrdersContainer = document.getElementById("stallOrders");
 
-    if (!stallOrdersContainer) {
-        return;
-    }
+    const stallOrdersContainer =
+        document.getElementById("stallOrders");
+
+    if (!stallOrdersContainer) return;
 
     try {
-        const response = await fetch("http://localhost:3000/api/orders");
+
+        const response = await fetch(
+            "http://localhost:3000/api/orders"
+        );
 
         if (!response.ok) {
-            throw new Error("Failed to fetch orders");
+
+            throw new Error(
+                "Failed to fetch orders"
+            );
         }
 
-        const orders = await response.json();
+        const orders =
+            await response.json();
 
         if (orders.length === 0) {
+
             stallOrdersContainer.innerHTML = `
                 <div class="empty-state">
                     No orders yet.
@@ -378,35 +517,89 @@ async function renderStallOrders() {
             `;
 
             updateDashboardStats(orders);
+
             return;
         }
 
-        stallOrdersContainer.innerHTML = orders.map(order => {
-            return `
+        stallOrdersContainer.innerHTML =
+            orders.map(order => `
+
                 <div class="stall-order-card">
 
                     <div class="stall-order-header">
-                        <strong>Order #${order.id}</strong>
-                        <span class="status-badge">${order.status}</span>
+
+                        <strong>
+                            Order #${order.id}
+                        </strong>
+
+                        <span class="status-badge">
+                            ${order.status}
+                        </span>
+
                     </div>
 
                     <div class="stall-order-info">
-                        <p>Total: ₹${order.total}</p>
-                        <p>Time: ${new Date(order.created_at).toLocaleTimeString()}</p>
+
+                        <p>
+                            Total: ₹${order.total}
+                        </p>
+
+                        <p>
+                            Time:
+                            ${new Date(
+                                order.created_at
+                            ).toLocaleTimeString()}
+                        </p>
+
+                    </div>
+
+                    <div class="order-items">
+
+                        ${
+                            order.items &&
+                            order.items.length > 0
+
+                            ? order.items.map(item => `
+                                <div class="order-item-row">
+
+                                    <span>
+                                        ${item.name}
+                                    </span>
+
+                                    <span>
+                                        ${item.quantity} × ₹${item.price}
+                                    </span>
+
+                                </div>
+                            `).join("")
+
+                            : `
+                                <p>
+                                    Order items unavailable
+                                </p>
+                            `
+                        }
+
                     </div>
 
                     <div class="stall-order-actions">
+
                         ${getOrderActionButton(order)}
+
                     </div>
 
                 </div>
-            `;
-        }).join("");
+
+            `).join("");
 
         updateDashboardStats(orders);
 
     } catch (error) {
-        console.error("Error loading stall orders:", error);
+
+        console.error(
+            "Error loading stall orders:",
+            error
+        );
 
         stallOrdersContainer.innerHTML = `
             <div class="empty-state">
@@ -417,34 +610,51 @@ async function renderStallOrders() {
 }
 
 function getOrderActionButton(order) {
+
     if (order.status === "Placed") {
+
         return `
-            <button class="btn-primary"
-                onclick="changeOrderStatus(${order.id}, 'Accepted')">
+            <button
+                class="btn-primary"
+                onclick="changeOrderStatus(
+                    ${order.id},
+                    'Accepted'
+                )">
                 Accept Order
             </button>
         `;
     }
 
     if (order.status === "Accepted") {
+
         return `
-            <button class="btn-primary"
-                onclick="changeOrderStatus(${order.id}, 'Preparing')">
+            <button
+                class="btn-primary"
+                onclick="changeOrderStatus(
+                    ${order.id},
+                    'Preparing'
+                )">
                 Start Preparing
             </button>
         `;
     }
 
     if (order.status === "Preparing") {
+
         return `
-            <button class="btn-primary"
-                onclick="changeOrderStatus(${order.id}, 'Ready')">
+            <button
+                class="btn-primary"
+                onclick="changeOrderStatus(
+                    ${order.id},
+                    'Ready'
+                )">
                 Mark Ready
             </button>
         `;
     }
 
     if (order.status === "Ready") {
+
         return `
             <span class="ready-message">
                 Ready for Pickup
@@ -455,58 +665,70 @@ function getOrderActionButton(order) {
     return "";
 }
 
-async function changeOrderStatus(orderId, status) {
+async function changeOrderStatus(
+    orderId,
+    status
+) {
+
     try {
+
         const response = await fetch(
             `http://localhost:3000/api/orders/${orderId}/status`,
             {
                 method: "PUT",
+
                 headers: {
                     "Content-Type": "application/json"
                 },
+
                 body: JSON.stringify({
                     status: status
                 })
             }
         );
 
-        const data = await response.json();
+        const data =
+            await response.json();
 
         if (!response.ok) {
-            throw new Error(data.message || "Failed to update order");
+
+            throw new Error(
+                data.message ||
+                "Failed to update order"
+            );
         }
 
         if (currentOrder.id === orderId) {
-            currentOrder.status = data.order.status;
+
+            currentOrder.status =
+                data.order.status;
+
             updateOrderDisplay();
         }
 
         await renderStallOrders();
 
     } catch (error) {
-        console.error("Error updating order:", error);
-        alert("Unable to update order status.");
-    }
-}
 
-function getStatusClass() {
-    if (currentOrder.status === "Preparing") {
-        return "preparing";
-    }
+        console.error(
+            "Error updating order:",
+            error
+        );
 
-    if (currentOrder.status === "Ready") {
-        return "ready";
+        alert(
+            "Unable to update order status."
+        );
     }
-
-    return "placed";
 }
 
 function updateDashboardStats(orders) {
+
     let newOrders = 0;
     let preparing = 0;
     let ready = 0;
 
     orders.forEach(order => {
+
         if (order.status === "Placed") {
             newOrders++;
         }
@@ -520,53 +742,166 @@ function updateDashboardStats(orders) {
         }
     });
 
-    const newOrdersElement = document.getElementById("newOrders");
-    const preparingElement = document.getElementById("preparingOrders");
-    const readyElement = document.getElementById("readyOrders");
+    const newOrdersElement =
+        document.getElementById("newOrders");
+
+    const preparingElement =
+        document.getElementById("preparingOrders");
+
+    const readyElement =
+        document.getElementById("readyOrders");
+
+    const todayOrdersElement =
+        document.getElementById("todayOrders");
 
     if (newOrdersElement) {
-        newOrdersElement.textContent = newOrders;
+        newOrdersElement.textContent =
+            newOrders;
     }
 
     if (preparingElement) {
-        preparingElement.textContent = preparing;
+        preparingElement.textContent =
+            preparing;
     }
 
     if (readyElement) {
-        readyElement.textContent = ready;
+        readyElement.textContent =
+            ready;
+    }
+
+    if (todayOrdersElement) {
+        todayOrdersElement.textContent =
+            orders.length;
+    }
+}
+
+async function renderInventory() {
+
+    const inventoryGrid =
+        document.getElementById("inventoryGrid");
+
+    if (!inventoryGrid) return;
+
+    try {
+
+        const response = await fetch(
+            "http://localhost:3000/api/inventory"
+        );
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Failed to fetch inventory"
+            );
+        }
+
+        const inventory =
+            await response.json();
+
+        inventoryData = inventory;
+
+        renderMenu();
+
+        inventoryGrid.innerHTML =
+            inventory.map(item => {
+
+                let stockClass = "stock-good";
+                let stockText = "In Stock";
+
+                if (item.stock === 0) {
+
+                    stockClass = "stock-out";
+                    stockText = "Out of Stock";
+
+                } else if (
+                    item.stock <=
+                    item.low_stock_limit
+                ) {
+
+                    stockClass = "stock-low";
+                    stockText = "Low Stock";
+                }
+
+                return `
+                    <div class="inventory-card">
+
+                        <div>
+                            <strong>
+                                ${item.name}
+                            </strong>
+
+                            <p>
+                                Stock:
+                                ${item.stock}
+                            </p>
+                        </div>
+
+                        <span class="${stockClass}">
+                            ${stockText}
+                        </span>
+
+                    </div>
+                `;
+
+            }).join("");
+
+    } catch (error) {
+
+        console.error(
+            "Error loading inventory:",
+            error
+        );
+
+        inventoryGrid.innerHTML = `
+            <div class="empty-state">
+                Unable to load inventory.
+            </div>
+        `;
     }
 }
 
 function showStudent() {
-    document.getElementById("studentView")
+
+    document
+        .getElementById("studentView")
         .classList.remove("hidden");
 
-    document.getElementById("stallView")
+    document
+        .getElementById("stallView")
         .classList.add("hidden");
 
-    document.querySelectorAll(".role-btn")[0]
+    document
+        .querySelectorAll(".role-btn")[0]
         .classList.add("active");
 
-    document.querySelectorAll(".role-btn")[1]
+    document
+        .querySelectorAll(".role-btn")[1]
         .classList.remove("active");
 }
 
 function showStall() {
-    document.getElementById("studentView")
+
+    document
+        .getElementById("studentView")
         .classList.add("hidden");
 
-    document.getElementById("stallView")
+    document
+        .getElementById("stallView")
         .classList.remove("hidden");
 
-    document.querySelectorAll(".role-btn")[0]
+    document
+        .querySelectorAll(".role-btn")[0]
         .classList.remove("active");
 
-    document.querySelectorAll(".role-btn")[1]
+    document
+        .querySelectorAll(".role-btn")[1]
         .classList.add("active");
 
     renderStallOrders();
+    renderInventory();
 }
 
 renderMenu();
 updateCart();
 renderStallOrders();
+renderInventory();
