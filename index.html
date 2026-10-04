@@ -1,0 +1,266 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CanteenSync</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="topbar">
+        <div class="brand">
+            <div class="brand-icon">CS</div>
+            <div>
+                <h1>CanteenSync</h1>
+                <span>Smart Campus Canteen</span>
+            </div>
+        </div>
+
+        <div class="top-actions">
+            <button class="role-btn active" onclick="showStudent()">Student</button>
+            <button class="role-btn" onclick="showStall()">Stall Operator</button>
+        </div>
+    </header>
+
+    <main>
+
+        <!-- STUDENT SECTION -->
+        <section id="studentView" class="view">
+
+            <div class="hero">
+                <div>
+                    <p class="eyebrow">CAMPUS FOOD • ONE PLATFORM</p>
+                    <h2>Order smarter.<br><span>Skip the queue.</span></h2>
+                    <p class="hero-text">
+                        Browse food from multiple campus stalls, place your order
+                        and track it until it is ready for pickup.
+                    </p>
+                </div>
+
+                <div class="hero-card">
+                    <div class="hero-card-icon">⚡</div>
+                    <strong>Quick Ordering</strong>
+                    <span>Real-time order tracking</span>
+                </div>
+            </div>
+
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">MENU</p>
+                    <h3>Available at the canteen</h3>
+                </div>
+
+                <div class="filters">
+                    <button class="filter active" onclick="filterMenu('all', this)">All</button>
+                    <button class="filter" onclick="filterMenu('Main Stall', this)">Main Stall</button>
+                    <button class="filter" onclick="filterMenu('Cafe', this)">Cafe</button>
+                    <button class="filter" onclick="filterMenu('Snacks', this)">Snacks</button>
+                </div>
+            </div>
+
+            <div id="menuGrid" class="menu-grid"></div>
+
+            <!-- CART -->
+            <div id="cartPanel" class="cart-panel hidden">
+
+                <div class="cart-header">
+                    <div>
+                        <p class="eyebrow">YOUR ORDER</p>
+                        <h3>Cart</h3>
+                    </div>
+                    <button class="close-btn" onclick="closeCart()">×</button>
+                </div>
+
+                <div id="cartItems"></div>
+
+                <div class="cart-total">
+                    <span>Total</span>
+                    <strong id="cartTotal">₹0</strong>
+                </div>
+
+                <div class="payment-note">
+                    <span>Payment status</span>
+                    <strong>Pending</strong>
+                </div>
+
+                <button class="primary-btn full" onclick="placeOrder()">
+                    Place Order
+                </button>
+            </div>
+
+            <!-- ORDER STATUS -->
+            <div id="orderPanel" class="order-panel hidden">
+
+                <div class="order-top">
+                    <div>
+                        <p class="eyebrow">ORDER TRACKING</p>
+                        <h3 id="orderNumber">Order #1001</h3>
+                    </div>
+
+                    <span id="orderStatusBadge" class="status-badge placed">
+                        PLACED
+                    </span>
+                </div>
+
+                <div class="progress-track">
+
+                    <div class="progress-step active" id="stepPlaced">
+                        <div class="step-circle">✓</div>
+                        <span>Placed</span>
+                    </div>
+
+                    <div class="progress-line" id="line1"></div>
+
+                    <div class="progress-step" id="stepAccepted">
+                        <div class="step-circle">2</div>
+                        <span>Accepted</span>
+                    </div>
+
+                    <div class="progress-line" id="line2"></div>
+
+                    <div class="progress-step" id="stepPreparing">
+                        <div class="step-circle">3</div>
+                        <span>Preparing</span>
+                    </div>
+
+                    <div class="progress-line" id="line3"></div>
+
+                    <div class="progress-step" id="stepReady">
+                        <div class="step-circle">4</div>
+                        <span>Ready</span>
+                    </div>
+
+                </div>
+
+                <div class="pickup-message" id="pickupMessage">
+                    Your order has been sent to the stall.
+                </div>
+
+            </div>
+
+            <button id="floatingCart" class="floating-cart hidden" onclick="openCart()">
+                <span>🛒</span>
+                <span>View Cart</span>
+                <strong id="cartCount">0</strong>
+            </button>
+
+        </section>
+
+
+        <!-- STALL SECTION -->
+        <section id="stallView" class="view hidden">
+
+            <div class="dashboard-header">
+                <div>
+                    <p class="eyebrow">STALL OPERATIONS</p>
+                    <h2>Stall Dashboard</h2>
+                    <p>Manage incoming orders and preparation status.</p>
+                </div>
+
+                <div class="live-indicator">
+                    <span></span> LIVE
+                </div>
+            </div>
+
+            <div class="stats-grid">
+
+                <div class="stat-card">
+                    <span>New Orders</span>
+                    <strong id="newOrders">1</strong>
+                    <small>Waiting for acceptance</small>
+                </div>
+
+                <div class="stat-card">
+                    <span>Preparing</span>
+                    <strong id="preparingOrders">0</strong>
+                    <small>Currently in kitchen</small>
+                </div>
+
+                <div class="stat-card">
+                    <span>Ready</span>
+                    <strong id="readyOrders">0</strong>
+                    <small>Waiting for pickup</small>
+                </div>
+
+                <div class="stat-card">
+                    <span>Today's Orders</span>
+                    <strong id="todayOrders">24</strong>
+                    <small>Across this stall</small>
+                </div>
+
+            </div>
+
+            <div class="dashboard-section">
+
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">ORDER QUEUE</p>
+                        <h3>Incoming orders</h3>
+                    </div>
+
+                    <span class="queue-status">
+                        ● Orders updating live
+                    </span>
+                </div>
+
+                <div id="stallOrders"></div>
+
+            </div>
+
+            <div class="inventory-section">
+
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">INVENTORY</p>
+                        <h3>Stock overview</h3>
+                    </div>
+                </div>
+
+                <div class="inventory-grid">
+
+                    <div class="inventory-item">
+                        <div>
+                            <strong>Chicken Biryani</strong>
+                            <span>32 portions remaining</span>
+                        </div>
+                        <div class="stock good"></div>
+                    </div>
+
+                    <div class="inventory-item">
+                        <div>
+                            <strong>Veg Fried Rice</strong>
+                            <span>18 portions remaining</span>
+                        </div>
+                        <div class="stock medium"></div>
+                    </div>
+
+                    <div class="inventory-item">
+                        <div>
+                            <strong>Sandwich</strong>
+                            <span>8 portions remaining</span>
+                        </div>
+                        <div class="stock low"></div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <footer>
+        <div>
+            <strong>CanteenSync</strong>
+            <span>Cross-platform canteen management ecosystem</span>
+        </div>
+
+        <span>Round 2 • Build & Validate</span>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
