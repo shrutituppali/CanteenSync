@@ -4,232 +4,1322 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CanteenSync</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-<header class="topbar">
-    <div class="brand">
-        <div class="brand-icon">🍽️</div>
-        <div>
-            <h2>CanteenSync</h2>
-            <span>Smart Campus Food Management</span>
+    <!-- =========================
+         LOGIN PAGE
+    ========================== -->
+
+    <section id="loginPage" class="login-page">
+
+        <div class="login-brand-panel">
+
+            
+
+            <div class="login-brand-content">
+                <span class="eyebrow">SMART CAMPUS DINING</span>
+
+                <h1>
+                    The smart way to run your
+                    <span>college canteen.</span>
+                </h1>
+
+                <p>
+                    One connected platform for students,
+                    stall operators and smarter canteen management.
+                </p>
+            </div>
+
+            <div class="login-metrics">
+
+                <div class="login-metric">
+                    <strong>4</strong>
+                    <span>Connected Roles</span>
+                </div>
+
+                <div class="login-metric">
+                    <strong>24/7</strong>
+                    <span>Order Visibility</span>
+                </div>
+
+                <div class="login-metric">
+                    <strong>1</strong>
+                    <span>Unified Platform</span>
+                </div>
+
+            </div>
+
         </div>
-    </div>
 
-    <div class="role-switch">
-        <button class="role-btn active" onclick="showStudent()">Student</button>
-        <button class="role-btn" onclick="showStall()">Stall Operator</button>
-    </div>
-</header>
 
-<main>
+        <div class="login-form-panel">
 
-    <!-- STUDENT VIEW -->
-    <section id="studentView">
+            <div class="login-box">
 
-        <section class="hero">
-            <div>
-                <span class="hero-tag">CAMPUS FOOD • SIMPLIFIED</span>
-                <h1>Skip the queue.<br><span>Order smarter.</span></h1>
-                <p>Browse campus food stalls, order ahead, and track your food in real time.</p>
+                <div class="login-heading">
+                    <span class="eyebrow">CANTEENSYNC</span>
+                    <h2>Welcome back</h2>
+                    <p>Sign in to continue to your dashboard.</p>
+                </div>
+
+
+                <div class="role-selector">
+
+                    <button
+                        type="button"
+                        id="studentRoleBtn"
+                        class="role-btn active"
+                        onclick="selectLoginRole('student')"
+                    >
+                        <span class="role-icon">👨‍🎓</span>
+                        <span>
+                            <strong>Student</strong>
+                            <small>Browse & order</small>
+                        </span>
+                    </button>
+
+                    <button
+                        type="button"
+                        id="stallRoleBtn"
+                        class="role-btn"
+                        onclick="selectLoginRole('stall')"
+                    >
+                        <span class="role-icon">🏪</span>
+                        <span>
+                            <strong>Stall Manager</strong>
+                            <small>Manage stall</small>
+                        </span>
+                    </button>
+
+                </div>
+
+
+                <form id="loginForm" onsubmit="handleLogin(event)">
+
+                    <div class="form-group">
+
+                        <label for="loginEmail">Email address</label>
+
+                        <input
+                            type="email"
+                            id="loginEmail"
+                            placeholder="Enter your email"
+                            autocomplete="email"
+                            required
+                        >
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="loginPassword">Password</label>
+
+                        <input
+                            type="password"
+                            id="loginPassword"
+                            placeholder="Enter your password"
+                            autocomplete="current-password"
+                            required
+                        >
+
+                    </div>
+
+
+                    <div
+                        id="loginError"
+                        class="login-error"
+                        style="display: none;"
+                    ></div>
+
+
+                    <button
+                        type="submit"
+                        class="primary-btn login-submit-btn"
+                    >
+                        Sign In
+                        <span>→</span>
+                    </button>
+
+                </form>
+
+
+                <div class="demo-login">
+
+                    <div class="demo-title">
+                        Demo credentials
+                    </div>
+
+                    <div class="demo-row">
+                        <span>Student</span>
+                        <code>shruti@gmail.com</code>
+                    </div>
+
+                    <div class="demo-row">
+                        <span>Password</span>
+                        <code>hello123</code>
+                    </div>
+
+                    <div class="demo-divider"></div>
+
+                    <div class="demo-row">
+                        <span>Stall Manager</span>
+                        <code>stall@canteen.com</code>
+                    </div>
+
+                    <div class="demo-row">
+                        <span>Password</span>
+                        <code>stall123</code>
+                    </div>
+
+                </div>
+
             </div>
 
-            <div class="hero-card">
-                <div class="hero-card-icon">⚡</div>
-                <strong>Fast Ordering</strong>
-                <span>Order before reaching the stall.</span>
-            </div>
-        </section>
+        </div>
 
-        <section class="menu-section">
-            <div class="section-heading">
+    </section>
+
+
+
+    <!-- =========================
+         MAIN APPLICATION
+    ========================== -->
+
+    <section id="appPage" class="app-page" style="display: none;">
+
+        <!-- SIDEBAR -->
+
+        <aside class="sidebar">
+
+            <div class="sidebar-brand">
+
+                <div class="brand-icon">CS</div>
+
                 <div>
-                    <span class="section-label">MENU</span>
-                    <h2>What are you craving?</h2>
-                </div>
-            </div>
-
-            <div class="filters">
-                <button class="filter active" onclick="filterMenu('all', this)">All</button>
-                <button class="filter" onclick="filterMenu('Main Stall', this)">Main Stall</button>
-                <button class="filter" onclick="filterMenu('Cafe', this)">Cafe</button>
-                <button class="filter" onclick="filterMenu('Snacks', this)">Snacks</button>
-            </div>
-
-            <div id="menuGrid" class="menu-grid"></div>
-        </section>
-
-        <!-- CART -->
-        <section id="cartPanel" class="cart-panel hidden">
-            <div class="cart-header">
-                <div>
-                    <span class="section-label">YOUR ORDER</span>
-                    <h2>Cart</h2>
-                </div>
-                <button class="close-btn" onclick="closeCart()">×</button>
-            </div>
-
-            <div id="cartItems"></div>
-
-            <div class="cart-footer">
-                <div class="cart-total-row">
-                    <span>Total</span>
-                    <strong id="cartTotal">₹0</strong>
+                    <strong>CanteenSync</strong>
+                    <span>Campus Dining</span>
                 </div>
 
-                <button class="btn-primary checkout-btn" onclick="placeOrder()">
-                    Place Order
+            </div>
+
+
+            <!-- STUDENT NAVIGATION -->
+
+            <nav id="studentNav" class="sidebar-nav">
+
+                <div class="nav-label">STUDENT</div>
+
+                <button
+                    type="button"
+                    class="nav-item active"
+                    onclick="showStudent('dashboard')"
+                    id="studentDashboardNav"
+                >
+                    <span class="nav-icon">⌂</span>
+                    Dashboard
                 </button>
-            </div>
-        </section>
 
-        <!-- ORDER TRACKING -->
-        <section class="tracking-section">
-            <div class="section-heading">
-                <div>
-                    <span class="section-label">LIVE ORDER</span>
-                    <h2>Track your order</h2>
+                <button
+                    type="button"
+                    class="nav-item"
+                    onclick="showStudent('menu')"
+                    id="studentMenuNav"
+                >
+                    <span class="nav-icon">☷</span>
+                    Menu
+                </button>
+
+                <button
+                    type="button"
+                    class="nav-item"
+                    onclick="showStudent('orders')"
+                    id="studentOrdersNav"
+                >
+                    <span class="nav-icon">▤</span>
+                    My Orders
+                </button>
+
+            </nav>
+
+
+            <!-- STALL NAVIGATION -->
+
+            <nav id="stallNav" class="sidebar-nav" style="display: none;">
+
+                <div class="nav-label">STALL MANAGER</div>
+
+                <button
+                    type="button"
+                    class="nav-item active"
+                    onclick="showStall('dashboard')"
+                    id="stallDashboardNav"
+                >
+                    <span class="nav-icon">⌂</span>
+                    Dashboard
+                </button>
+
+                <button
+                    type="button"
+                    class="nav-item"
+                    onclick="showStall('orders')"
+                    id="stallOrdersNav"
+                >
+                    <span class="nav-icon">▤</span>
+                    Orders
+                </button>
+
+                <button
+                    type="button"
+                    class="nav-item"
+                    onclick="showStall('inventory')"
+                    id="stallInventoryNav"
+                >
+                    <span class="nav-icon">▥</span>
+                    Inventory
+                </button>
+
+                <button
+                    type="button"
+                    class="nav-item"
+                    onclick="showStall('analytics')"
+                    id="stallAnalyticsNav"
+                >
+                    <span class="nav-icon">◩</span>
+                    Analytics
+                </button>
+
+            </nav>
+
+
+            <div class="sidebar-bottom">
+
+                <div class="sidebar-user">
+
+                    <div class="user-avatar" id="sidebarUserAvatar">
+                        S
+                    </div>
+
+                    <div class="user-info">
+
+                        <strong id="sidebarUserName">
+                            Student
+                        </strong>
+
+                        <span id="sidebarUserRole">
+                            Student
+                        </span>
+
+                    </div>
+
                 </div>
 
-                <span id="orderStatusBadge" class="status-badge placed">
-                    No Active Order
+
+                <button
+                    type="button"
+                    class="logout-btn"
+                    onclick="logout()"
+                >
+                    <span>↪</span>
+                    Logout
+                </button>
+
+            </div>
+
+        </aside>
+
+
+
+        <!-- MAIN CONTENT -->
+
+        <main class="main-content">
+
+            <!-- TOP BAR -->
+
+            <header class="topbar">
+
+                <div class="mobile-brand">
+                    <div class="brand-icon">CS</div>
+                    <strong>CanteenSync</strong>
+                </div>
+
+                <div class="topbar-right">
+
+                    <div class="topbar-user">
+
+                        <div class="topbar-avatar" id="topbarUserAvatar">
+                            S
+                        </div>
+
+                        <div>
+                            <strong id="topbarUserName">
+                                Student
+                            </strong>
+
+                            <span id="topbarUserRole">
+                                Student
+                            </span>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </header>
+
+
+
+            <!-- =========================
+                 STUDENT AREA
+            ========================== -->
+
+            <section id="studentArea" class="dashboard-area">
+
+
+                <!-- STUDENT DASHBOARD -->
+
+                <div id="studentDashboardSection" class="page-section">
+
+                    <section class="student-hero">
+
+                        <div class="hero-content">
+
+                            <span class="eyebrow">GOOD TO SEE YOU</span>
+
+                            <h1>
+                                What are you craving today?
+                            </h1>
+
+                            <p>
+                                Explore your campus canteen,
+                                order your favourite food and skip the queue.
+                            </p>
+
+                            <button
+                                type="button"
+                                class="hero-btn"
+                                onclick="showStudent('menu')"
+                            >
+                                Browse Menu
+                                <span>→</span>
+                            </button>
+
+                        </div>
+
+                        <div class="hero-decoration">
+                            🍱
+                        </div>
+
+                    </section>
+
+
+                    <!-- QUICK ACTIONS -->
+
+                    <div class="section-heading">
+
+                        <div>
+                            <span class="eyebrow">QUICK ACTIONS</span>
+                            <h2>What would you like to do?</h2>
+                        </div>
+
+                    </div>
+
+
+                    <div class="quick-actions">
+
+                        <button
+                            type="button"
+                            class="quick-card"
+                            onclick="showStudent('menu')"
+                        >
+                            <div class="quick-icon orange-icon">☷</div>
+
+                            <div>
+                                <strong>Browse Menu</strong>
+                                <span>Find something delicious</span>
+                            </div>
+
+                            <span class="quick-arrow">→</span>
+                        </button>
+
+
+                        <button
+                            type="button"
+                            class="quick-card"
+                            onclick="showStudent('orders')"
+                        >
+                            <div class="quick-icon blue-icon">▤</div>
+
+                            <div>
+                                <strong>My Orders</strong>
+                                <span>Track your active orders</span>
+                            </div>
+
+                            <span class="quick-arrow">→</span>
+                        </button>
+
+
+                        <button
+                            type="button"
+                            class="quick-card"
+                            onclick="scrollToSection('studentCartSection')"
+                        >
+                            <div class="quick-icon green-icon">🛒</div>
+
+                            <div>
+                                <strong>View Cart</strong>
+                                <span>Review your selected items</span>
+                            </div>
+
+                            <span class="quick-arrow">→</span>
+                        </button>
+
+                    </div>
+
+
+                    <!-- STUDENT METRICS -->
+
+                    <div class="stats-grid student-stats-grid">
+
+                        <div class="stat-card">
+
+                            <div class="stat-icon orange-icon">
+                                🛒
+                            </div>
+
+                            <div>
+                                <span>My Orders</span>
+                                <strong id="studentOrderCount">0</strong>
+                            </div>
+
+                        </div>
+
+
+                        <div class="stat-card">
+
+                            <div class="stat-icon green-icon">
+                                ✓
+                            </div>
+
+                            <div>
+                                <span>Completed</span>
+                                <strong id="studentCompletedCount">0</strong>
+                            </div>
+
+                        </div>
+
+
+                        <div class="stat-card">
+
+                            <div class="stat-icon blue-icon">
+                                ◷
+                            </div>
+
+                            <div>
+                                <span>Active Order</span>
+                                <strong id="studentActiveCount">0</strong>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- POPULAR FOOD -->
+
+                    <section class="content-card">
+
+                        <div class="card-heading">
+
+                            <div>
+                                <span class="eyebrow">POPULAR TODAY</span>
+                                <h2>Available at the canteen</h2>
+                            </div>
+
+                            <button
+                                type="button"
+                                class="text-btn"
+                                onclick="showStudent('menu')"
+                            >
+                                View Menu →
+                            </button>
+
+                        </div>
+
+                        <div
+                            id="studentPopularItems"
+                            class="popular-items"
+                        ></div>
+
+                    </section>
+
+
+                    <!-- CURRENT ORDER -->
+
+                    <section class="content-card">
+
+                        <div class="card-heading">
+
+                            <div>
+                                <span class="eyebrow">ORDER STATUS</span>
+                                <h2>Your current order</h2>
+                            </div>
+
+                            <button
+                                type="button"
+                                class="text-btn"
+                                onclick="showStudent('orders')"
+                            >
+                                My Orders →
+                            </button>
+
+                        </div>
+
+                        <div
+                            id="studentCurrentOrder"
+                            class="current-order-container"
+                        >
+
+                            <div class="empty-state">
+                                <div class="empty-icon">🛍️</div>
+                                <h3>No active order</h3>
+                                <p>
+                                    Your latest order status will appear here.
+                                </p>
+                            </div>
+
+                        </div>
+
+                    </section>
+
+                </div>
+
+
+
+                <!-- STUDENT MENU -->
+
+                <div
+                    id="studentMenuSection"
+                    class="page-section"
+                    style="display: none;"
+                >
+
+                    <div class="page-header">
+
+                        <div>
+                            <span class="eyebrow">CANTEEN MENU</span>
+                            <h1>Choose your food</h1>
+                            <p>
+                                Browse available items across the canteen.
+                            </p>
+                        </div>
+
+                    </div>
+
+
+                    <div class="menu-toolbar">
+
+                        <div class="search-box">
+
+                            <span>⌕</span>
+
+                            <input
+                                type="text"
+                                id="menuSearch"
+                                placeholder="Search food..."
+                                oninput="searchMenu(this.value)"
+                            >
+
+                        </div>
+
+
+                        <div class="filter-buttons">
+
+                            <button
+                                type="button"
+                                class="filter-btn active"
+                                onclick="filterMenu('all', this)"
+                            >
+                                All
+                            </button>
+
+                            <button
+                                type="button"
+                                class="filter-btn"
+                                onclick="filterMenu('main', this)"
+                            >
+                                Main Stall
+                            </button>
+
+                            <button
+                                type="button"
+                                class="filter-btn"
+                                onclick="filterMenu('cafe', this)"
+                            >
+                                Cafe
+                            </button>
+
+                            <button
+                                type="button"
+                                class="filter-btn"
+                                onclick="filterMenu('snacks', this)"
+                            >
+                                Snacks
+                            </button>
+
+                        </div>
+
+                    </div>
+
+
+                    <div
+                        id="menuGrid"
+                        class="menu-grid"
+                    ></div>
+
+                </div>
+
+
+
+                <!-- STUDENT CART -->
+
+                <div
+                    id="studentCartSection"
+                    class="page-section"
+                    style="display: none;"
+                >
+
+                    <div class="page-header">
+
+                        <div>
+                            <span class="eyebrow">YOUR SELECTION</span>
+                            <h1>Your Cart</h1>
+                            <p>
+                                Review your items before placing your order.
+                            </p>
+                        </div>
+
+                    </div>
+
+
+                    <div class="cart-layout">
+
+                        <div
+                            id="cartItems"
+                            class="cart-items"
+                        ></div>
+
+
+                        <aside class="cart-summary">
+
+                            <div class="summary-header">
+                                <span class="eyebrow">ORDER SUMMARY</span>
+                                <h2>Checkout</h2>
+                            </div>
+
+                            <div class="summary-row">
+                                <span>Items</span>
+                                <strong id="cartItemCount">0</strong>
+                            </div>
+
+                            <div class="summary-row">
+                                <span>Subtotal</span>
+                                <strong id="cartSubtotal">₹0</strong>
+                            </div>
+
+                            <div class="summary-divider"></div>
+
+                            <div class="summary-total">
+                                <span>Total</span>
+                                <strong id="cartTotal">₹0</strong>
+                            </div>
+
+                            <button
+                                type="button"
+                                id="placeOrderBtn"
+                                class="primary-btn full-btn"
+                                onclick="placeOrder()"
+                            >
+                                Place Order
+                                <span>→</span>
+                            </button>
+
+                        </aside>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- STUDENT ORDERS -->
+
+                <div
+                    id="studentOrdersSection"
+                    class="page-section"
+                    style="display: none;"
+                >
+
+                    <div class="page-header">
+
+                        <div>
+                            <span class="eyebrow">ORDER HISTORY</span>
+                            <h1>My Orders</h1>
+                            <p>
+                                Track your orders and see their latest status.
+                            </p>
+                        </div>
+
+                    </div>
+
+
+                    <div
+                        id="studentOrdersList"
+                        class="student-orders-list"
+                    ></div>
+
+
+                    <div
+                        id="studentTracking"
+                        class="tracking-section"
+                    >
+
+                        <div class="card-heading">
+
+                            <div>
+                                <span class="eyebrow">LIVE TRACKING</span>
+                                <h2>Current order</h2>
+                            </div>
+
+                        </div>
+
+                        <div id="trackingContent">
+
+                            <div class="empty-state">
+                                <div class="empty-icon">📦</div>
+                                <h3>No active order</h3>
+                                <p>
+                                    Place an order to start tracking it.
+                                </p>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+
+            <!-- =========================
+                 STALL MANAGER AREA
+            ========================== -->
+
+            <section
+                id="stallArea"
+                class="dashboard-area"
+                style="display: none;"
+            >
+
+
+                <!-- STALL DASHBOARD -->
+
+                <div
+                    id="stallDashboardSection"
+                    class="page-section"
+                >
+
+                    <section class="stall-hero">
+
+                        <div>
+
+                            <span class="eyebrow">
+                                STALL MANAGEMENT
+                            </span>
+
+                            <h1>
+                                Good afternoon, Stall Manager.
+                            </h1>
+
+                            <p>
+                                Keep orders moving and your inventory under control.
+                            </p>
+
+                        </div>
+
+                        <div class="stall-status">
+
+                            <span class="status-dot"></span>
+                            Stall Online
+
+                        </div>
+
+                    </section>
+
+
+                    <!-- STALL METRICS -->
+
+                    <div class="stats-grid stall-stats-grid">
+
+                        <div class="stat-card">
+
+                            <div class="stat-icon orange-icon">
+                                🔔
+                            </div>
+
+                            <div>
+                                <span>New Orders</span>
+                                <strong id="newOrdersCount">0</strong>
+                            </div>
+
+                        </div>
+
+
+                        <div class="stat-card">
+
+                            <div class="stat-icon yellow-icon">
+                                ◷
+                            </div>
+
+                            <div>
+                                <span>Preparing</span>
+                                <strong id="preparingOrdersCount">0</strong>
+                            </div>
+
+                        </div>
+
+
+                        <div class="stat-card">
+
+                            <div class="stat-icon green-icon">
+                                ✓
+                            </div>
+
+                            <div>
+                                <span>Ready</span>
+                                <strong id="readyOrdersCount">0</strong>
+                            </div>
+
+                        </div>
+
+
+                        <div class="stat-card">
+
+                            <div class="stat-icon blue-icon">
+                                ▤
+                            </div>
+
+                            <div>
+                                <span>Today's Orders</span>
+                                <strong id="todayOrdersCount">0</strong>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- ACTIVE ORDERS -->
+
+                    <section class="content-card">
+
+                        <div class="card-heading">
+
+                            <div>
+                                <span class="eyebrow">LIVE QUEUE</span>
+                                <h2>Active Orders</h2>
+                            </div>
+
+                            <button
+                                type="button"
+                                class="text-btn"
+                                onclick="showStall('orders')"
+                            >
+                                View All →
+                            </button>
+
+                        </div>
+
+
+                        <div
+                            id="dashboardOrders"
+                            class="orders-list"
+                        ></div>
+
+                    </section>
+
+
+                    <!-- INVENTORY PREVIEW -->
+
+                    <section class="content-card">
+
+                        <div class="card-heading">
+
+                            <div>
+                                <span class="eyebrow">INVENTORY</span>
+                                <h2>Stock Overview</h2>
+                            </div>
+
+                            <button
+                                type="button"
+                                class="text-btn"
+                                onclick="showStall('inventory')"
+                            >
+                                Manage Inventory →
+                            </button>
+
+                        </div>
+
+
+                        <div
+                            id="dashboardInventory"
+                            class="inventory-preview"
+                        ></div>
+
+                    </section>
+
+                </div>
+
+
+
+                <!-- STALL ORDERS -->
+
+                <div
+                    id="stallOrdersSection"
+                    class="page-section"
+                    style="display: none;"
+                >
+
+                    <div class="page-header">
+
+                        <div>
+                            <span class="eyebrow">ORDER MANAGEMENT</span>
+                            <h1>Stall Orders</h1>
+                            <p>
+                                Accept, prepare and complete incoming orders.
+                            </p>
+                        </div>
+
+                    </div>
+
+
+                    <div class="order-tabs">
+
+                        <button
+                            type="button"
+                            class="order-tab active"
+                            onclick="renderStallOrders('all', this)"
+                        >
+                            All Orders
+                        </button>
+
+                        <button
+                            type="button"
+                            class="order-tab"
+                            onclick="renderStallOrders('Placed', this)"
+                        >
+                            New
+                        </button>
+
+                        <button
+                            type="button"
+                            class="order-tab"
+                            onclick="renderStallOrders('Accepted', this)"
+                        >
+                            Accepted
+                        </button>
+
+                        <button
+                            type="button"
+                            class="order-tab"
+                            onclick="renderStallOrders('Preparing', this)"
+                        >
+                            Preparing
+                        </button>
+
+                        <button
+                            type="button"
+                            class="order-tab"
+                            onclick="renderStallOrders('Ready', this)"
+                        >
+                            Ready
+                        </button>
+
+                    </div>
+
+
+                    <div
+                        id="stallOrdersList"
+                        class="orders-list"
+                    ></div>
+
+                </div>
+
+
+
+                <!-- STALL INVENTORY -->
+
+                <div
+                    id="stallInventorySection"
+                    class="page-section"
+                    style="display: none;"
+                >
+
+                    <div class="page-header">
+
+                        <div>
+                            <span class="eyebrow">STOCK MANAGEMENT</span>
+                            <h1>Inventory</h1>
+                            <p>
+                                Monitor stock levels and identify low-stock items.
+                            </p>
+                        </div>
+
+                    </div>
+
+
+                    <div class="stats-grid inventory-stats">
+
+                        <div class="stat-card">
+
+                            <div class="stat-icon blue-icon">
+                                ▦
+                            </div>
+
+                            <div>
+                                <span>Total Items</span>
+                                <strong id="inventoryTotalItems">0</strong>
+                            </div>
+
+                        </div>
+
+
+                        <div class="stat-card">
+
+                            <div class="stat-icon green-icon">
+                                📦
+                            </div>
+
+                            <div>
+                                <span>Total Stock</span>
+                                <strong id="inventoryTotalStock">0</strong>
+                            </div>
+
+                        </div>
+
+
+                        <div class="stat-card">
+
+                            <div class="stat-icon red-icon">
+                                !
+                            </div>
+
+                            <div>
+                                <span>Low Stock</span>
+                                <strong id="inventoryLowStock">0</strong>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <section class="content-card">
+
+                        <div class="card-heading">
+
+                            <div>
+                                <span class="eyebrow">CURRENT STOCK</span>
+                                <h2>Inventory Overview</h2>
+                            </div>
+
+                        </div>
+
+
+                        <div
+                            id="inventoryList"
+                            class="inventory-list"
+                        ></div>
+
+                    </section>
+
+                </div>
+
+
+
+                <!-- STALL ANALYTICS -->
+
+                <div
+                    id="stallAnalyticsSection"
+                    class="page-section"
+                    style="display: none;"
+                >
+
+                    <div class="page-header">
+
+                        <div>
+                            <span class="eyebrow">BUSINESS INSIGHTS</span>
+                            <h1>Analytics</h1>
+                            <p>
+                                Understand orders, revenue and popular items.
+                            </p>
+                        </div>
+
+                    </div>
+
+
+                    <div class="stats-grid analytics-stats">
+
+                        <div class="stat-card">
+
+                            <div class="stat-icon orange-icon">
+                                ▤
+                            </div>
+
+                            <div>
+                                <span>Total Orders</span>
+                                <strong id="analyticsTotalOrders">0</strong>
+                            </div>
+
+                        </div>
+
+
+                        <div class="stat-card">
+
+                            <div class="stat-icon green-icon">
+                                ₹
+                            </div>
+
+                            <div>
+                                <span>Total Revenue</span>
+                                <strong id="analyticsRevenue">₹0</strong>
+                            </div>
+
+                        </div>
+
+
+                        <div class="stat-card">
+
+                            <div class="stat-icon blue-icon">
+                                ★
+                            </div>
+
+                            <div>
+                                <span>Top Item</span>
+                                <strong id="analyticsTopItem">—</strong>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="analytics-grid">
+
+                        <section class="content-card">
+
+                            <div class="card-heading">
+
+                                <div>
+                                    <span class="eyebrow">POPULAR ITEMS</span>
+                                    <h2>Top Selling Items</h2>
+                                </div>
+
+                            </div>
+
+                            <div
+                                id="popularItemsList"
+                                class="popular-items-list"
+                            ></div>
+
+                        </section>
+
+
+                        <section class="content-card">
+
+                            <div class="card-heading">
+
+                                <div>
+                                    <span class="eyebrow">ORDER BREAKDOWN</span>
+                                    <h2>Order Status</h2>
+                                </div>
+
+                            </div>
+
+                            <div
+                                id="orderStatusList"
+                                class="order-status-list"
+                            ></div>
+
+                        </section>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+
+            <!-- FOOTER -->
+
+            <footer class="app-footer">
+
+                <div>
+                    <strong>CanteenSync</strong>
+                    <span>Cross-Platform Canteen Management Ecosystem</span>
+                </div>
+
+                <span>
+                    Hackathon Prototype
                 </span>
-            </div>
 
-            <div class="tracking-card">
-                <div class="tracking-steps">
+            </footer>
 
-                    <div id="stepPlaced" class="tracking-step active">
-                        <div class="step-circle">✓</div>
-                        <span>Placed</span>
-                    </div>
-
-                    <div id="line1" class="tracking-line active"></div>
-
-                    <div id="stepAccepted" class="tracking-step">
-                        <div class="step-circle">✓</div>
-                        <span>Accepted</span>
-                    </div>
-
-                    <div id="line2" class="tracking-line"></div>
-
-                    <div id="stepPreparing" class="tracking-step">
-                        <div class="step-circle">🍳</div>
-                        <span>Preparing</span>
-                    </div>
-
-                    <div id="line3" class="tracking-line"></div>
-
-                    <div id="stepReady" class="tracking-step">
-                        <div class="step-circle">✓</div>
-                        <span>Ready</span>
-                    </div>
-
-                </div>
-
-                <div class="pickup-message" id="pickupMessage">
-                    Place an order to start tracking.
-                </div>
-            </div>
-        </section>
+        </main>
 
     </section>
 
-    <!-- STALL OPERATOR VIEW -->
-    <section id="stallView" class="hidden">
 
-        <section class="dashboard-hero">
-            <div>
-                <span class="hero-tag">STALL OPERATOR</span>
-                <h1>Good day, <span>Operator.</span></h1>
-                <p>Manage incoming orders and monitor your inventory.</p>
-            </div>
-        </section>
 
-        <!-- STATS -->
-        <section class="stats-grid">
+    <!-- FLOATING CART -->
 
-            <div class="stat-card">
-                <span>NEW ORDERS</span>
-                <strong id="newOrders">0</strong>
-                <small>Waiting for acceptance</small>
-            </div>
+    <button
+        type="button"
+        id="floatingCart"
+        class="floating-cart"
+        onclick="showStudent('cart')"
+    >
 
-            <div class="stat-card">
-                <span>PREPARING</span>
-                <strong id="preparingOrders">0</strong>
-                <small>Currently being prepared</small>
-            </div>
+        <span class="floating-cart-icon">
+            🛒
+        </span>
 
-            <div class="stat-card">
-                <span>READY</span>
-                <strong id="readyOrders">0</strong>
-                <small>Waiting for pickup</small>
-            </div>
+        <span class="floating-cart-text">
+            Cart
+        </span>
 
-            <div class="stat-card">
-                <span>TODAY'S ORDERS</span>
-                <strong id="todayOrders">24</strong>
-                <small>Total orders today</small>
-            </div>
+        <span
+            id="floatingCartCount"
+            class="cart-count"
+        >
+            0
+        </span>
 
-        </section>
+    </button>
 
-        <!-- ORDERS -->
-        <section class="dashboard-section">
 
-            <div class="section-header">
-                <div>
-                    <span class="section-label">ORDER QUEUE</span>
-                    <h2>Incoming Orders</h2>
-                </div>
-            </div>
-
-            <div id="stallOrders">
-                <div class="empty-state">Loading orders...</div>
-            </div>
-
-        </section>
-
-        <!-- INVENTORY -->
-        <section class="dashboard-section">
-
-            <div class="section-header">
-                <div>
-                    <span class="section-label">INVENTORY</span>
-                    <h2>Inventory Overview</h2>
-                    <p>Live stock levels for canteen items</p>
-                </div>
-            </div>
-
-            <div id="inventoryGrid" class="inventory-grid">
-                <div class="empty-state">Loading inventory...</div>
-            </div>
-
-        </section>
-
-    </section>
-
-</main>
-
-<!-- FLOATING CART -->
-<button id="floatingCart" class="floating-cart hidden" onclick="openCart()">
-    🛒
-    <span id="cartCount">0</span>
-</button>
-
-<footer>
-    <div>
-        <strong>CanteenSync</strong>
-        <span>Smart Campus Food Management</span>
-    </div>
-
-    <span>Built for Hackathon 2026</span>
-</footer>
-
-<script src="app.js"></script>
+    <script src="app.js"></script>
 
 </body>
 </html>

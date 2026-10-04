@@ -1,304 +1,951 @@
-const menuItems = [
-    {
-        id: 1,
-        name: "Chicken Biryani",
-        price: 120,
-        stall: "Main Stall",
-        icon: "🍛",
-        description: "Freshly prepared campus special biryani."
-    },
-    {
-        id: 2,
-        name: "Veg Fried Rice",
-        price: 80,
-        stall: "Main Stall",
-        icon: "🍚",
-        description: "Vegetable fried rice with fresh ingredients."
-    },
-    {
-        id: 3,
-        name: "Chicken Sandwich",
-        price: 70,
-        stall: "Cafe",
-        icon: "🥪",
-        description: "Grilled sandwich with chicken and vegetables."
-    },
-    {
-        id: 4,
-        name: "Cold Coffee",
-        price: 60,
-        stall: "Cafe",
-        icon: "☕",
-        description: "Chilled coffee served fresh."
-    },
-    {
-        id: 5,
-        name: "Samosa",
-        price: 25,
-        stall: "Snacks",
-        icon: "🥟",
-        description: "Crispy potato-filled samosa."
-    },
-    {
-        id: 6,
-        name: "French Fries",
-        price: 90,
-        stall: "Snacks",
-        icon: "🍟",
-        description: "Crispy golden fries."
-    }
-];
+const API_URL = "http://localhost:3000/api";
+
+let selectedLoginRole = "student";
+let currentUser = null;
 
 let cart = [];
-let currentFilter = "all";
+let activeOrder = null;
+
+let menuData = [];
 let inventoryData = [];
 
-let currentOrder = {
-    id: null,
-    status: "Placed",
-    total: 0
-};
+let currentFilter = "all";
+let currentSearch = "";
+
+
+
+/* =========================
+   LOGIN
+========================= */
+
+function selectLoginRole(role) {
+    selectedLoginRole = role;
+
+    const studentBtn = document.getElementById("studentRoleBtn");
+    const stallBtn = document.getElementById("stallRoleBtn");
+
+    studentBtn.classList.toggle("active", role === "student");
+    stallBtn.classList.toggle("active", role === "stall");
+
+    const emailInput = document.getElementById("loginEmail");
+    const passwordInput = document.getElementById("loginPassword");
+
+    if (role === "student") {
+        emailInput.value = "shruti@gmail.com";
+        passwordInput.value = "hello123";
+    } else {
+        emailInput.value = "stall@canteen.com";
+        passwordInput.value = "stall123";
+    }
+
+    const error = document.getElementById("loginError");
+
+    if (error) {
+        error.style.display = "none";
+        error.textContent = "";
+    }
+}
+
+
+async function handleLogin(event) {
+    event.preventDefault();
+
+    const email = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPassword").value;
+
+    const error = document.getElementById("loginError");
+    const button = document.querySelector(".login-submit-btn");
+
+    error.style.display = "none";
+    error.textContent = "";
+
+    button.disabled = true;
+    button.innerHTML = "Signing in...";
+
+    try {
+        const response = await fetch(`${API_URL}/login`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                email,
+                password,
+                role: selectedLoginRole
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || "Login failed");
+        }
+
+        currentUser = data.user;
+
+        localStorage.setItem(
+            "canteenSyncUser",
+            JSON.stringify(currentUser)
+        );
+
+        showApplication();
+
+    } catch (loginError) {
+        error.textContent = loginError.message;
+        error.style.display = "block";
+    } finally {
+        button.disabled = false;
+        button.innerHTML = `Sign In <span>→</span>`;
+    }
+}
+
+
+function showApplication() {
+    document.getElementById("loginPage").style.display = "none";
+    document.getElementById("appPage").style.display = "flex";
+
+    updateUserDetails();
+
+    if (currentUser.role === "student") {
+        document.getElementById("studentNav").style.display = "block";
+        document.getElementById("stallNav").style.display = "none";
+
+        document.getElementById("studentArea").style.display = "block";
+        document.getElementById("stallArea").style.display = "none";
+
+        showStudent("dashboard");
+
+        loadMenu();
+        loadStudentOrders();
+
+    } else {
+        document.getElementById("studentNav").style.display = "none";
+        document.getElementById("stallNav").style.display = "block";
+
+        document.getElementById("studentArea").style.display = "none";
+        document.getElementById("stallArea").style.display = "block";
+
+        showStall("dashboard");
+
+        loadStallData();
+    }
+}
+
+
+function updateUserDetails() {
+    if (!currentUser) {
+        return;
+    }
+
+    const firstLetter = currentUser.name
+        ? currentUser.name.charAt(0).toUpperCase()
+        : "U";
+
+    document.getElementById("sidebarUserName").textContent =
+        currentUser.name;
+
+    document.getElementById("sidebarUserRole").textContent =
+        currentUser.role === "student"
+            ? "Student"
+            : "Stall Manager";
+
+    document.getElementById("sidebarUserAvatar").textContent =
+        firstLetter;
+
+    document.getElementById("topbarUserName").textContent =
+        currentUser.name;
+
+    document.getElementById("topbarUserRole").textContent =
+        currentUser.role === "student"
+            ? "Student"
+            : "Stall Manager";
+
+    document.getElementById("topbarUserAvatar").textContent =
+        firstLetter;
+}
+
+
+function logout() {
+    localStorage.removeItem("canteenSyncUser");
+
+    currentUser = null;
+    cart = [];
+    activeOrder = null;
+
+    document.getElementById("appPage").style.display = "none";
+    document.getElementById("loginPage").style.display = "flex";
+
+    document.getElementById("loginEmail").value = "";
+    document.getElementById("loginPassword").value = "";
+
+    selectLoginRole("student");
+}
+
+
+function checkExistingLogin() {
+    const savedUser = localStorage.getItem("canteenSyncUser");
+
+    if (!savedUser) {
+        return;
+    }
+
+    try {
+        currentUser = JSON.parse(savedUser);
+
+        if (
+            currentUser &&
+            (currentUser.role === "student" ||
+                currentUser.role === "stall")
+        ) {
+            showApplication();
+        }
+
+    } catch (error) {
+        localStorage.removeItem("canteenSyncUser");
+    }
+}
+
+
+
+/* =========================
+   NAVIGATION
+========================= */
+
+function setActiveNav(containerId, activeId) {
+    const container = document.getElementById(containerId);
+
+    if (!container) {
+        return;
+    }
+
+    container
+        .querySelectorAll(".nav-item")
+        .forEach(item => item.classList.remove("active"));
+
+    const active = document.getElementById(activeId);
+
+    if (active) {
+        active.classList.add("active");
+    }
+}
+
+
+function showStudent(section) {
+    if (!currentUser || currentUser.role !== "student") {
+        return;
+    }
+
+    const sections = [
+        "studentDashboardSection",
+        "studentMenuSection",
+        "studentCartSection",
+        "studentOrdersSection"
+    ];
+
+    sections.forEach(id => {
+        const element = document.getElementById(id);
+
+        if (element) {
+            element.style.display = "none";
+        }
+    });
+
+    if (section === "dashboard") {
+        document.getElementById("studentDashboardSection").style.display =
+            "block";
+
+        setActiveNav(
+            "studentNav",
+            "studentDashboardNav"
+        );
+
+        updateStudentStats();
+        updateStudentDashboard();
+
+    } else if (section === "menu") {
+        document.getElementById("studentMenuSection").style.display =
+            "block";
+
+        setActiveNav(
+            "studentNav",
+            "studentMenuNav"
+        );
+
+        renderMenu();
+
+    } else if (section === "cart") {
+        document.getElementById("studentCartSection").style.display =
+            "block";
+
+        updateCart();
+
+    } else if (section === "orders") {
+        document.getElementById("studentOrdersSection").style.display =
+            "block";
+
+        setActiveNav(
+            "studentNav",
+            "studentOrdersNav"
+        );
+
+        loadStudentOrders();
+    }
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+}
+
+
+function showStall(section) {
+    if (!currentUser || currentUser.role !== "stall") {
+        return;
+    }
+
+    const sections = [
+        "stallDashboardSection",
+        "stallOrdersSection",
+        "stallInventorySection",
+        "stallAnalyticsSection"
+    ];
+
+    sections.forEach(id => {
+        const element = document.getElementById(id);
+
+        if (element) {
+            element.style.display = "none";
+        }
+    });
+
+    if (section === "dashboard") {
+        document.getElementById("stallDashboardSection").style.display =
+            "block";
+
+        setActiveNav(
+            "stallNav",
+            "stallDashboardNav"
+        );
+
+        loadStallData();
+
+    } else if (section === "orders") {
+        document.getElementById("stallOrdersSection").style.display =
+            "block";
+
+        setActiveNav(
+            "stallNav",
+            "stallOrdersNav"
+        );
+
+        loadStallOrders();
+
+    } else if (section === "inventory") {
+        document.getElementById("stallInventorySection").style.display =
+            "block";
+
+        setActiveNav(
+            "stallNav",
+            "stallInventoryNav"
+        );
+
+        loadInventory();
+
+    } else if (section === "analytics") {
+        document.getElementById("stallAnalyticsSection").style.display =
+            "block";
+
+        setActiveNav(
+            "stallNav",
+            "stallAnalyticsNav"
+        );
+
+        loadAnalytics();
+    }
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+}
+
+
+function scrollToSection(id) {
+    const element = document.getElementById(id);
+
+    if (!element) {
+        return;
+    }
+
+    if (id === "studentCartSection") {
+        showStudent("cart");
+        return;
+    }
+
+    element.scrollIntoView({
+        behavior: "smooth"
+    });
+}
+
+
+
+/* =========================
+   MENU
+========================= */
+
+async function loadMenu() {
+    try {
+        const response = await fetch(`${API_URL}/menu`);
+
+        if (!response.ok) {
+            throw new Error("Failed to load menu");
+        }
+
+        menuData = await response.json();
+
+        renderMenu();
+        renderPopularItems();
+
+    } catch (error) {
+        console.error("Menu loading error:", error);
+
+        const grid = document.getElementById("menuGrid");
+
+        if (grid) {
+            grid.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">⚠️</div>
+                    <h3>Unable to load menu</h3>
+                    <p>Please make sure the backend server is running.</p>
+                </div>
+            `;
+        }
+    }
+}
+
 
 function renderMenu() {
     const grid = document.getElementById("menuGrid");
 
-    if (!grid) return;
+    if (!grid) {
+        return;
+    }
 
-    const filteredItems = currentFilter === "all"
-        ? menuItems
-        : menuItems.filter(item => item.stall === currentFilter);
+    let filteredItems = [...menuData];
 
-    grid.innerHTML = filteredItems.map(item => {
-        const inventoryItem = inventoryData.find(
-            stockItem => stockItem.item_id === item.id
+    if (currentFilter !== "all") {
+        filteredItems = filteredItems.filter(item => {
+            const category = String(
+                item.category || ""
+            ).toLowerCase();
+
+            return category === currentFilter;
+        });
+    }
+
+    if (currentSearch.trim()) {
+        const search = currentSearch
+            .trim()
+            .toLowerCase();
+
+        filteredItems = filteredItems.filter(item =>
+            String(item.name)
+                .toLowerCase()
+                .includes(search)
         );
+    }
 
-        const stock = inventoryItem
-            ? inventoryItem.stock
-            : null;
-
-        let stockText = "Checking stock...";
-        let stockClass = "stock-good";
-        let buttonText = "+ Add";
-        let buttonDisabled = "";
-
-        if (stock !== null) {
-            if (stock === 0) {
-                stockText = "Out of Stock";
-                stockClass = "stock-out";
-                buttonText = "Out of Stock";
-                buttonDisabled = "disabled";
-            } else if (
-                stock <= inventoryItem.low_stock_limit
-            ) {
-                stockText = `Low Stock • ${stock} left`;
-                stockClass = "stock-low";
-            } else {
-                stockText = `${stock} available`;
-                stockClass = "stock-good";
-            }
-        }
-
-        return `
-            <div class="menu-card">
-
-                <div class="food-image">
-                    ${item.icon}
-                </div>
-
-                <div class="menu-content">
-
-                    <span class="stall-name">
-                        ${item.stall}
-                    </span>
-
-                    <h4>${item.name}</h4>
-
-                    <p>${item.description}</p>
-
-                    <div class="${stockClass}">
-                        ${stockText}
-                    </div>
-
-                    <div class="menu-bottom">
-
-                        <span class="price">
-                            ₹${item.price}
-                        </span>
-
-                        <button
-                            class="add-btn"
-                            onclick="addToCart(${item.id})"
-                            ${buttonDisabled}>
-                            ${buttonText}
-                        </button>
-
-                    </div>
-
-                </div>
+    if (filteredItems.length === 0) {
+        grid.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">🍽️</div>
+                <h3>No items found</h3>
+                <p>Try another search or category.</p>
             </div>
         `;
-    }).join("");
+
+        return;
+    }
+
+    grid.innerHTML = filteredItems
+        .map(item => {
+
+            const stockItem = inventoryData.find(
+                inventory =>
+                    Number(inventory.item_id) === Number(item.id)
+            );
+
+            const stock =
+                stockItem
+                    ? Number(stockItem.stock)
+                    : null;
+
+            const unavailable =
+                stock !== null && stock <= 0;
+
+            const lowStock =
+                stock !== null &&
+                stock > 0 &&
+                stock <= Number(stockItem.low_stock_limit || 5);
+
+            let stockText = "Available";
+
+            if (unavailable) {
+                stockText = "Out of stock";
+            } else if (lowStock) {
+                stockText = `Only ${stock} left`;
+            }
+
+            return `
+                <article class="menu-card">
+
+                    <div class="menu-image ${getFoodClass(item.name)}">
+                        ${getFoodEmoji(item.name)}
+                    </div>
+
+                    <div class="menu-card-body">
+
+                        <div class="menu-card-top">
+
+                            <span class="menu-category">
+                                ${formatCategory(item.category)}
+                            </span>
+
+                            <span class="availability ${
+                                unavailable
+                                    ? "unavailable"
+                                    : lowStock
+                                        ? "low"
+                                        : ""
+                            }">
+                                ${stockText}
+                            </span>
+
+                        </div>
+
+                        <h3>${escapeHtml(item.name)}</h3>
+
+                        <p>
+                            ${getFoodDescription(item.name)}
+                        </p>
+
+                        <div class="menu-card-bottom">
+
+                            <strong>
+                                ₹${Number(item.price).toFixed(0)}
+                            </strong>
+
+                            <button
+                                type="button"
+                                class="add-btn"
+                                onclick="addToCart(${item.id})"
+                                ${unavailable ? "disabled" : ""}
+                            >
+                                ${unavailable ? "Unavailable" : "Add +"}
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </article>
+            `;
+        })
+        .join("");
 }
+
 
 function filterMenu(filter, button) {
     currentFilter = filter;
 
-    document.querySelectorAll(".filter").forEach(btn => {
-        btn.classList.remove("active");
-    });
+    document
+        .querySelectorAll(".filter-btn")
+        .forEach(btn => btn.classList.remove("active"));
 
-    button.classList.add("active");
+    if (button) {
+        button.classList.add("active");
+    }
 
     renderMenu();
 }
 
-function addToCart(id) {
-    const item = menuItems.find(item => item.id === id);
 
-    if (!item) return;
+function searchMenu(value) {
+    currentSearch = value;
+    renderMenu();
+}
 
-    const inventoryItem = inventoryData.find(
-        stockItem => stockItem.item_id === id
+
+function getFoodEmoji(name) {
+    const value = String(name).toLowerCase();
+
+    if (value.includes("biryani")) {
+        return "🍛";
+    }
+
+    if (value.includes("rice")) {
+        return "🍚";
+    }
+
+    if (value.includes("sandwich")) {
+        return "🥪";
+    }
+
+    if (value.includes("coffee")) {
+        return "☕";
+    }
+
+    if (value.includes("samosa")) {
+        return "🥟";
+    }
+
+    if (value.includes("fries")) {
+        return "🍟";
+    }
+
+    return "🍽️";
+}
+
+
+function getFoodClass(name) {
+    const value = String(name).toLowerCase();
+
+    if (value.includes("biryani")) {
+        return "food-biryani";
+    }
+
+    if (value.includes("rice")) {
+        return "food-rice";
+    }
+
+    if (value.includes("sandwich")) {
+        return "food-sandwich";
+    }
+
+    if (value.includes("coffee")) {
+        return "food-coffee";
+    }
+
+    if (value.includes("samosa")) {
+        return "food-samosa";
+    }
+
+    if (value.includes("fries")) {
+        return "food-fries";
+    }
+
+    return "food-default";
+}
+
+
+function getFoodDescription(name) {
+    const value = String(name).toLowerCase();
+
+    if (value.includes("biryani")) {
+        return "Aromatic rice with tender chicken and rich spices.";
+    }
+
+    if (value.includes("fried rice")) {
+        return "Flavourful fried rice with fresh vegetables.";
+    }
+
+    if (value.includes("sandwich")) {
+        return "Freshly prepared sandwich packed with flavour.";
+    }
+
+    if (value.includes("coffee")) {
+        return "Cold, creamy coffee for a refreshing break.";
+    }
+
+    if (value.includes("samosa")) {
+        return "Crispy golden snack with a delicious filling.";
+    }
+
+    if (value.includes("fries")) {
+        return "Crispy golden fries served fresh.";
+    }
+
+    return "Freshly prepared and available at the canteen.";
+}
+
+
+function formatCategory(category) {
+    if (!category) {
+        return "Canteen";
+    }
+
+    return String(category)
+        .replace(/[-_]/g, " ")
+        .replace(/\b\w/g, char => char.toUpperCase());
+}
+
+
+
+/* =========================
+   CART
+========================= */
+
+function addToCart(itemId) {
+    const item = menuData.find(
+        currentItem =>
+            Number(currentItem.id) === Number(itemId)
     );
 
-    if (!inventoryItem || inventoryItem.stock <= 0) {
-        alert(`${item.name} is currently out of stock.`);
+    if (!item) {
+        return;
+    }
+
+    const inventoryItem = inventoryData.find(
+        currentInventory =>
+            Number(currentInventory.item_id) === Number(itemId)
+    );
+
+    if (
+        inventoryItem &&
+        Number(inventoryItem.stock) <= 0
+    ) {
+        alert("This item is currently out of stock.");
         return;
     }
 
     const existing = cart.find(
-        cartItem => cartItem.id === id
+        cartItem =>
+            Number(cartItem.id) === Number(itemId)
     );
 
-    const currentQuantity = existing
-        ? existing.quantity
-        : 0;
-
-    if (currentQuantity >= inventoryItem.stock) {
-        alert(
-            `Only ${inventoryItem.stock} ${item.name} available.`
-        );
-        return;
-    }
-
     if (existing) {
-        existing.quantity++;
+
+        if (
+            inventoryItem &&
+            existing.quantity >= Number(inventoryItem.stock)
+        ) {
+            alert("You cannot add more than the available stock.");
+            return;
+        }
+
+        existing.quantity += 1;
+
     } else {
+
         cart.push({
-            ...item,
+            id: item.id,
+            name: item.name,
+            price: Number(item.price),
             quantity: 1
         });
     }
 
     updateCart();
+}
+
+
+function increaseCartItem(itemId) {
+    const cartItem = cart.find(
+        item =>
+            Number(item.id) === Number(itemId)
+    );
+
+    if (!cartItem) {
+        return;
+    }
+
+    const inventoryItem = inventoryData.find(
+        item =>
+            Number(item.item_id) === Number(itemId)
+    );
+
+    if (
+        inventoryItem &&
+        cartItem.quantity >= Number(inventoryItem.stock)
+    ) {
+        alert("Maximum available stock reached.");
+        return;
+    }
+
+    cartItem.quantity += 1;
+
+    updateCart();
+}
+
+
+function decreaseCartItem(itemId) {
+    const cartItem = cart.find(
+        item =>
+            Number(item.id) === Number(itemId)
+    );
+
+    if (!cartItem) {
+        return;
+    }
+
+    cartItem.quantity -= 1;
+
+    if (cartItem.quantity <= 0) {
+        cart = cart.filter(
+            item =>
+                Number(item.id) !== Number(itemId)
+        );
+    }
+
+    updateCart();
+}
+
+
+function removeFromCart(itemId) {
+    cart = cart.filter(
+        item =>
+            Number(item.id) !== Number(itemId)
+    );
+
+    updateCart();
+}
+
+
+function updateCart() {
+    const cartItems = document.getElementById("cartItems");
+
+    const totalQuantity = cart.reduce(
+        (sum, item) => sum + item.quantity,
+        0
+    );
+
+    const total = cart.reduce(
+        (sum, item) =>
+            sum + item.price * item.quantity,
+        0
+    );
+
+    document.getElementById("cartItemCount").textContent =
+        totalQuantity;
+
+    document.getElementById("cartSubtotal").textContent =
+        `₹${total.toFixed(0)}`;
+
+    document.getElementById("cartTotal").textContent =
+        `₹${total.toFixed(0)}`;
+
+    const floatingCount =
+        document.getElementById("floatingCartCount");
+
+    if (floatingCount) {
+        floatingCount.textContent = totalQuantity;
+    }
 
     const floatingCart =
         document.getElementById("floatingCart");
 
     if (floatingCart) {
-        floatingCart.classList.remove("hidden");
+        floatingCart.style.display =
+            currentUser &&
+            currentUser.role === "student" &&
+            totalQuantity > 0
+                ? "flex"
+                : "none";
     }
-}
 
-function updateCart() {
-    const cartItems =
-        document.getElementById("cartItems");
-
-    const cartCount =
-        document.getElementById("cartCount");
-
-    const cartTotal =
-        document.getElementById("cartTotal");
-
-    if (!cartItems || !cartCount || !cartTotal) {
+    if (!cartItems) {
         return;
     }
-
-    let total = 0;
-    let count = 0;
 
     if (cart.length === 0) {
 
         cartItems.innerHTML = `
-            <div class="pickup-message">
-                Your cart is empty.
+            <div class="empty-state">
+                <div class="empty-icon">🛒</div>
+                <h3>Your cart is empty</h3>
+                <p>Add some delicious items from the menu.</p>
+
+                <button
+                    type="button"
+                    class="primary-btn"
+                    onclick="showStudent('menu')"
+                >
+                    Browse Menu
+                </button>
             </div>
         `;
 
-    } else {
+        return;
+    }
 
-        cartItems.innerHTML = cart.map(item => {
+    cartItems.innerHTML = cart
+        .map(item => `
+            <div class="cart-item">
 
-            total += item.price * item.quantity;
-            count += item.quantity;
+                <div class="cart-item-image">
+                    ${getFoodEmoji(item.name)}
+                </div>
 
-            return `
-                <div class="cart-item">
+                <div class="cart-item-info">
 
-                    <div class="cart-item-info">
+                    <span class="menu-category">
+                        Canteen Item
+                    </span>
 
-                        <strong>
-                            ${item.name}
-                        </strong>
-
-                        <span>
-                            ${item.quantity} × ₹${item.price}
-                        </span>
-
-                    </div>
+                    <h3>
+                        ${escapeHtml(item.name)}
+                    </h3>
 
                     <strong>
-                        ₹${item.price * item.quantity}
+                        ₹${item.price.toFixed(0)}
                     </strong>
 
                 </div>
-            `;
 
-        }).join("");
-    }
+                <div class="cart-item-actions">
 
-    cartCount.textContent = count;
-    cartTotal.textContent = `₹${total}`;
+                    <div class="quantity-control">
 
-    const floatingCart =
-        document.getElementById("floatingCart");
+                        <button
+                            type="button"
+                            onclick="decreaseCartItem(${item.id})"
+                        >
+                            −
+                        </button>
 
-    if (floatingCart) {
+                        <span>
+                            ${item.quantity}
+                        </span>
 
-        if (count === 0) {
-            floatingCart.classList.add("hidden");
-        } else {
-            floatingCart.classList.remove("hidden");
-        }
-    }
+                        <button
+                            type="button"
+                            onclick="increaseCartItem(${item.id})"
+                        >
+                            +
+                        </button>
+
+                    </div>
+
+                    <strong class="cart-line-total">
+                        ₹${(
+                            item.price * item.quantity
+                        ).toFixed(0)}
+                    </strong>
+
+                    <button
+                        type="button"
+                        class="remove-cart-btn"
+                        onclick="removeFromCart(${item.id})"
+                    >
+                        ×
+                    </button>
+
+                </div>
+
+            </div>
+        `)
+        .join("");
 }
 
-function openCart() {
-    const cartPanel =
-        document.getElementById("cartPanel");
 
-    if (!cartPanel) return;
 
-    cartPanel.classList.remove("hidden");
-
-    cartPanel.scrollIntoView({
-        behavior: "smooth"
-    });
-}
-
-function closeCart() {
-    const cartPanel =
-        document.getElementById("cartPanel");
-
-    if (!cartPanel) return;
-
-    cartPanel.classList.add("hidden");
-}
+/* =========================
+   PLACE ORDER
+========================= */
 
 async function placeOrder() {
-
     if (cart.length === 0) {
+        alert("Your cart is empty.");
         return;
     }
 
@@ -308,20 +955,29 @@ async function placeOrder() {
         0
     );
 
+    const orderButton =
+        document.getElementById("placeOrderBtn");
+
+    orderButton.disabled = true;
+    orderButton.innerHTML = "Placing Order...";
+
     try {
 
         const response = await fetch(
-            "http://localhost:3000/api/orders",
+            `${API_URL}/orders`,
             {
                 method: "POST",
-
                 headers: {
                     "Content-Type": "application/json"
                 },
-
                 body: JSON.stringify({
-                    total: total,
-                    items: cart
+                    total,
+                    items: cart.map(item => ({
+                        item_id: item.id,
+                        name: item.name,
+                        price: item.price,
+                        quantity: item.quantity
+                    }))
                 })
             }
         );
@@ -330,578 +986,1422 @@ async function placeOrder() {
 
         if (!response.ok) {
             throw new Error(
-                data.message ||
-                "Failed to place order"
+                data.message || "Unable to place order"
             );
         }
 
-        currentOrder = {
-            id: data.order.id,
-            status: data.order.status,
-            total: data.order.total
-        };
+        activeOrder = data.order || data;
 
         cart = [];
 
         updateCart();
 
-        closeCart();
-
-        showStudent();
-
-        updateOrderDisplay();
-
-        await renderStallOrders();
-
-        await renderInventory();
-
         alert(
-            `Order #${data.order.id} placed successfully!`
+            `Order #${activeOrder.id || data.id} placed successfully!`
         );
+
+        await loadMenu();
+        await loadStudentOrders();
+
+        showStudent("orders");
+
+    } catch (error) {
+
+        alert(error.message);
+
+    } finally {
+
+        orderButton.disabled = false;
+        orderButton.innerHTML =
+            `Place Order <span>→</span>`;
+    }
+}
+
+
+
+/* =========================
+   STUDENT ORDERS
+========================= */
+
+async function loadStudentOrders() {
+    if (
+        !currentUser ||
+        currentUser.role !== "student"
+    ) {
+        return;
+    }
+
+    try {
+
+        const response =
+            await fetch(`${API_URL}/orders`);
+
+        if (!response.ok) {
+            throw new Error("Failed to load orders");
+        }
+
+        const orders = await response.json();
+
+        const sortedOrders = [...orders].sort(
+            (a, b) =>
+                Number(b.id) - Number(a.id)
+        );
+
+        if (sortedOrders.length > 0) {
+            activeOrder =
+                sortedOrders.find(
+                    order =>
+                        order.status !== "Ready"
+                ) || sortedOrders[0];
+        } else {
+            activeOrder = null;
+        }
+
+        renderStudentOrders(sortedOrders);
+        updateOrderDisplay(activeOrder);
+        updateStudentStats(sortedOrders);
+        updateStudentDashboard(sortedOrders);
 
     } catch (error) {
 
         console.error(
-            "Error placing order:",
+            "Student orders error:",
             error
         );
-
-        alert(
-            error.message ||
-            "Unable to place order. Make sure the backend is running."
-        );
     }
 }
 
-function updateOrderDisplay() {
 
-    const badge =
-        document.getElementById("orderStatusBadge");
+function renderStudentOrders(orders) {
+    const container =
+        document.getElementById("studentOrdersList");
 
-    if (!badge) return;
-
-    badge.className = "status-badge";
-
-    badge.textContent = currentOrder.status;
-
-    if (currentOrder.status === "Placed") {
-
-        badge.classList.add("placed");
-
-    } else if (currentOrder.status === "Accepted") {
-
-        badge.classList.add("placed");
-
-    } else if (currentOrder.status === "Preparing") {
-
-        badge.classList.add("preparing");
-
-    } else if (currentOrder.status === "Ready") {
-
-        badge.classList.add("ready");
+    if (!container) {
+        return;
     }
 
-    const steps = [
-        "stepPlaced",
-        "stepAccepted",
-        "stepPreparing",
-        "stepReady"
-    ];
+    if (!orders.length) {
 
-    const lines = [
-        "line1",
-        "line2",
-        "line3"
-    ];
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📦</div>
+                <h3>No orders yet</h3>
+                <p>Your placed orders will appear here.</p>
 
-    const statusIndex = {
-        Placed: 0,
-        Accepted: 1,
-        Preparing: 2,
-        Ready: 3
-    };
+                <button
+                    type="button"
+                    class="primary-btn"
+                    onclick="showStudent('menu')"
+                >
+                    Browse Menu
+                </button>
+            </div>
+        `;
 
-    const currentIndex =
-        statusIndex[currentOrder.status];
-
-    steps.forEach((step, index) => {
-
-        const element =
-            document.getElementById(step);
-
-        if (!element) return;
-
-        if (index <= currentIndex) {
-
-            element.classList.add("active");
-
-        } else {
-
-            element.classList.remove("active");
-        }
-    });
-
-    lines.forEach((line, index) => {
-
-        const element =
-            document.getElementById(line);
-
-        if (!element) return;
-
-        if (index < currentIndex) {
-
-            element.classList.add("active");
-
-        } else {
-
-            element.classList.remove("active");
-        }
-    });
-
-    const message =
-        document.getElementById("pickupMessage");
-
-    if (!message) return;
-
-    if (currentOrder.status === "Placed") {
-
-        message.textContent =
-            "Your order has been sent to the stall.";
-
-    } else if (currentOrder.status === "Accepted") {
-
-        message.textContent =
-            "The stall has accepted your order.";
-
-    } else if (currentOrder.status === "Preparing") {
-
-        message.textContent =
-            "Your food is being prepared.";
-
-    } else if (currentOrder.status === "Ready") {
-
-        message.textContent =
-            "Your order is ready. Please collect it from the stall.";
+        return;
     }
-}
 
-async function renderStallOrders() {
+    container.innerHTML = orders
+        .map(order => {
 
-    const stallOrdersContainer =
-        document.getElementById("stallOrders");
+            const statusClass =
+                String(order.status)
+                    .toLowerCase();
 
-    if (!stallOrdersContainer) return;
+            const date = order.created_at
+                ? new Date(
+                    order.created_at
+                ).toLocaleString()
+                : "";
 
-    try {
+            const itemsText =
+                Array.isArray(order.items)
+                    ? order.items
+                        .map(
+                            item =>
+                                `${item.name} × ${item.quantity}`
+                        )
+                        .join(", ")
+                    : "Order items";
 
-        const response = await fetch(
-            "http://localhost:3000/api/orders"
-        );
+            return `
+                <article class="student-order-card">
 
-        if (!response.ok) {
+                    <div class="student-order-top">
 
-            throw new Error(
-                "Failed to fetch orders"
-            );
-        }
+                        <div>
 
-        const orders =
-            await response.json();
+                            <span class="eyebrow">
+                                ORDER #${order.id}
+                            </span>
 
-        if (orders.length === 0) {
+                            <h3>
+                                ${escapeHtml(itemsText)}
+                            </h3>
 
-            stallOrdersContainer.innerHTML = `
-                <div class="empty-state">
-                    No orders yet.
-                </div>
-            `;
+                            <span class="order-date">
+                                ${date}
+                            </span>
 
-            updateDashboardStats(orders);
+                        </div>
 
-            return;
-        }
-
-        stallOrdersContainer.innerHTML =
-            orders.map(order => `
-
-                <div class="stall-order-card">
-
-                    <div class="stall-order-header">
-
-                        <strong>
-                            Order #${order.id}
-                        </strong>
-
-                        <span class="status-badge">
+                        <span
+                            class="status-pill ${statusClass}"
+                        >
                             ${order.status}
                         </span>
 
                     </div>
 
-                    <div class="stall-order-info">
+                    <div class="student-order-bottom">
 
-                        <p>
-                            Total: ₹${order.total}
-                        </p>
-
-                        <p>
-                            Time:
-                            ${new Date(
-                                order.created_at
-                            ).toLocaleTimeString()}
-                        </p>
-
-                    </div>
-
-                    <div class="order-items">
+                        <strong>
+                            ₹${Number(order.total).toFixed(0)}
+                        </strong>
 
                         ${
-                            order.items &&
-                            order.items.length > 0
-
-                            ? order.items.map(item => `
-                                <div class="order-item-row">
-
-                                    <span>
-                                        ${item.name}
+                            order.status !== "Ready"
+                                ? `
+                                    <button
+                                        type="button"
+                                        class="text-btn"
+                                        onclick="trackOrder(${order.id})"
+                                    >
+                                        Track Order →
+                                    </button>
+                                `
+                                : `
+                                    <span class="completed-label">
+                                        ✓ Ready for pickup
                                     </span>
-
-                                    <span>
-                                        ${item.quantity} × ₹${item.price}
-                                    </span>
-
-                                </div>
-                            `).join("")
-
-                            : `
-                                <p>
-                                    Order items unavailable
-                                </p>
-                            `
+                                `
                         }
 
                     </div>
 
-                    <div class="stall-order-actions">
+                </article>
+            `;
+        })
+        .join("");
+}
 
-                        ${getOrderActionButton(order)}
 
-                    </div>
+function trackOrder(orderId) {
+    const orderIdNumber = Number(orderId);
+
+    fetch(`${API_URL}/orders`)
+        .then(response => response.json())
+        .then(orders => {
+
+            const order = orders.find(
+                currentOrder =>
+                    Number(currentOrder.id) ===
+                    orderIdNumber
+            );
+
+            if (!order) {
+                return;
+            }
+
+            activeOrder = order;
+
+            updateOrderDisplay(order);
+
+            const tracking =
+                document.getElementById(
+                    "studentTracking"
+                );
+
+            if (tracking) {
+                tracking.scrollIntoView({
+                    behavior: "smooth"
+                });
+            }
+
+        })
+        .catch(error =>
+            console.error(error)
+        );
+}
+
+
+function updateOrderDisplay(order) {
+    const trackingContent =
+        document.getElementById(
+            "trackingContent"
+        );
+
+    const currentOrder =
+        document.getElementById(
+            "studentCurrentOrder"
+        );
+
+    if (!order) {
+
+        const emptyHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📦</div>
+                <h3>No active order</h3>
+                <p>
+                    Place an order to start tracking it.
+                </p>
+            </div>
+        `;
+
+        if (trackingContent) {
+            trackingContent.innerHTML =
+                emptyHTML;
+        }
+
+        if (currentOrder) {
+            currentOrder.innerHTML =
+                emptyHTML;
+        }
+
+        return;
+    }
+
+    const status =
+        order.status || "Placed";
+
+    const steps = [
+        "Placed",
+        "Accepted",
+        "Preparing",
+        "Ready"
+    ];
+
+    const currentIndex =
+        steps.indexOf(status);
+
+    const trackingHTML = `
+        <div class="tracking-card">
+
+            <div class="tracking-order-header">
+
+                <div>
+                    <span class="eyebrow">
+                        ORDER #${order.id}
+                    </span>
+
+                    <h3>
+                        ₹${Number(order.total).toFixed(0)}
+                    </h3>
+                </div>
+
+                <span class="status-pill ${status.toLowerCase()}">
+                    ${status}
+                </span>
+
+            </div>
+
+
+            <div class="tracking-progress">
+
+                ${steps.map(
+                    (step, index) => `
+                        <div
+                            class="tracking-step ${
+                                index <= currentIndex
+                                    ? "completed"
+                                    : ""
+                            } ${
+                                index === currentIndex
+                                    ? "current"
+                                    : ""
+                            }"
+                        >
+
+                            <div class="tracking-circle">
+                                ${
+                                    index < currentIndex
+                                        ? "✓"
+                                        : index + 1
+                                }
+                            </div>
+
+                            <span>${step}</span>
+
+                        </div>
+                    `
+                ).join("")}
+
+            </div>
+
+        </div>
+    `;
+
+    if (trackingContent) {
+        trackingContent.innerHTML =
+            trackingHTML;
+    }
+
+    if (currentOrder) {
+        currentOrder.innerHTML =
+            trackingHTML;
+    }
+}
+
+
+function updateStudentStats(orders = null) {
+    if (!orders) {
+        return;
+    }
+
+    const total =
+        orders.length;
+
+    const completed =
+        orders.filter(
+            order =>
+                order.status === "Ready"
+        ).length;
+
+    const active =
+        orders.filter(
+            order =>
+                order.status !== "Ready"
+        ).length;
+
+    document.getElementById(
+        "studentOrderCount"
+    ).textContent = total;
+
+    document.getElementById(
+        "studentCompletedCount"
+    ).textContent = completed;
+
+    document.getElementById(
+        "studentActiveCount"
+    ).textContent = active;
+}
+
+
+function updateStudentDashboard(orders = null) {
+    const currentOrder =
+        orders
+            ? orders.find(
+                order =>
+                    order.status !== "Ready"
+            )
+            : activeOrder;
+
+    const container =
+        document.getElementById(
+            "studentCurrentOrder"
+        );
+
+    if (!container) {
+        return;
+    }
+
+    if (!currentOrder) {
+
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">🛍️</div>
+                <h3>No active order</h3>
+                <p>
+                    Your latest order status will appear here.
+                </p>
+            </div>
+        `;
+
+        return;
+    }
+
+    const status =
+        currentOrder.status || "Placed";
+
+    container.innerHTML = `
+        <div class="mini-order-card">
+
+            <div>
+
+                <span class="eyebrow">
+                    ORDER #${currentOrder.id}
+                </span>
+
+                <h3>
+                    ₹${Number(currentOrder.total).toFixed(0)}
+                </h3>
+
+            </div>
+
+            <div class="mini-order-right">
+
+                <span class="status-pill ${status.toLowerCase()}">
+                    ${status}
+                </span>
+
+                <button
+                    type="button"
+                    class="text-btn"
+                    onclick="showStudent('orders')"
+                >
+                    Track →
+                </button>
+
+            </div>
+
+        </div>
+    `;
+}
+
+
+
+/* =========================
+   STUDENT POPULAR ITEMS
+========================= */
+
+function renderPopularItems() {
+    const container =
+        document.getElementById(
+            "studentPopularItems"
+        );
+
+    if (!container || !menuData.length) {
+        return;
+    }
+
+    const items =
+        menuData.slice(0, 4);
+
+    container.innerHTML =
+        items.map(item => `
+            <div class="popular-item">
+
+                <div
+                    class="popular-item-image ${getFoodClass(item.name)}"
+                >
+                    ${getFoodEmoji(item.name)}
+                </div>
+
+                <div class="popular-item-info">
+
+                    <strong>
+                        ${escapeHtml(item.name)}
+                    </strong>
+
+                    <span>
+                        ₹${Number(item.price).toFixed(0)}
+                    </span>
 
                 </div>
 
-            `).join("");
+                <button
+                    type="button"
+                    class="small-add-btn"
+                    onclick="addToCart(${item.id})"
+                >
+                    +
+                </button>
 
+            </div>
+        `)
+        .join("");
+}
+
+
+
+/* =========================
+   STALL DATA
+========================= */
+
+async function loadStallData() {
+    await Promise.all([
+        loadStallOrders(),
+        loadInventory(),
+        loadAnalytics()
+    ]);
+}
+
+
+async function loadStallOrders() {
+    try {
+
+        const response =
+            await fetch(`${API_URL}/orders`);
+
+        if (!response.ok) {
+            throw new Error("Failed to load orders");
+        }
+
+        const orders = await response.json();
+
+        renderDashboardOrders(orders);
+        renderStallOrderList(orders);
         updateDashboardStats(orders);
 
     } catch (error) {
 
         console.error(
-            "Error loading stall orders:",
+            "Stall order error:",
             error
         );
-
-        stallOrdersContainer.innerHTML = `
-            <div class="empty-state">
-                Unable to load orders.
-            </div>
-        `;
     }
 }
 
+
+function renderDashboardOrders(orders) {
+    const container =
+        document.getElementById(
+            "dashboardOrders"
+        );
+
+    if (!container) {
+        return;
+    }
+
+    const activeOrders =
+        orders
+            .filter(
+                order =>
+                    order.status !== "Ready"
+            )
+            .sort(
+                (a, b) =>
+                    Number(b.id) - Number(a.id)
+            )
+            .slice(0, 5);
+
+    if (!activeOrders.length) {
+
+        container.innerHTML = `
+            <div class="empty-state compact-empty">
+                <div class="empty-icon">✓</div>
+                <h3>No active orders</h3>
+                <p>New orders will appear here.</p>
+            </div>
+        `;
+
+        return;
+    }
+
+    container.innerHTML =
+        activeOrders
+            .map(order =>
+                createOrderCard(order)
+            )
+            .join("");
+}
+
+
+function renderStallOrderList(orders) {
+    const container =
+        document.getElementById(
+            "stallOrdersList"
+        );
+
+    if (!container) {
+        return;
+    }
+
+    const sorted =
+        [...orders].sort(
+            (a, b) =>
+                Number(b.id) - Number(a.id)
+        );
+
+    if (!sorted.length) {
+
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📦</div>
+                <h3>No orders yet</h3>
+                <p>Incoming orders will appear here.</p>
+            </div>
+        `;
+
+        return;
+    }
+
+    container.innerHTML =
+        sorted
+            .map(order =>
+                createOrderCard(order)
+            )
+            .join("");
+}
+
+
+function createOrderCard(order) {
+    const status =
+        order.status || "Placed";
+
+    const items =
+        Array.isArray(order.items)
+            ? order.items
+            : [];
+
+    const itemsHTML =
+        items.length
+            ? items.map(item => `
+                <div class="order-item-row">
+                    <span>
+                        ${escapeHtml(item.name)}
+                    </span>
+
+                    <strong>
+                        × ${item.quantity}
+                    </strong>
+                </div>
+            `).join("")
+            : `
+                <div class="order-item-row">
+                    <span>Order items</span>
+                </div>
+            `;
+
+    return `
+        <article class="order-card">
+
+            <div class="order-card-header">
+
+                <div>
+
+                    <span class="eyebrow">
+                        ORDER #${order.id}
+                    </span>
+
+                    <span class="order-time">
+                        ${formatOrderDate(order.created_at)}
+                    </span>
+
+                </div>
+
+                <span class="status-pill ${status.toLowerCase()}">
+                    ${status}
+                </span>
+
+            </div>
+
+
+            <div class="order-items">
+                ${itemsHTML}
+            </div>
+
+
+            <div class="order-card-footer">
+
+                <strong class="order-total">
+                    ₹${Number(order.total).toFixed(0)}
+                </strong>
+
+                <div class="order-action">
+                    ${getOrderActionButton(order)}
+                </div>
+
+            </div>
+
+        </article>
+    `;
+}
+
+
 function getOrderActionButton(order) {
+    const status =
+        order.status || "Placed";
 
-    if (order.status === "Placed") {
-
+    if (status === "Placed") {
         return `
             <button
-                class="btn-primary"
-                onclick="changeOrderStatus(
-                    ${order.id},
-                    'Accepted'
-                )">
+                type="button"
+                class="order-action-btn accept"
+                onclick="changeOrderStatus(${order.id}, 'Accepted')"
+            >
                 Accept Order
             </button>
         `;
     }
 
-    if (order.status === "Accepted") {
-
+    if (status === "Accepted") {
         return `
             <button
-                class="btn-primary"
-                onclick="changeOrderStatus(
-                    ${order.id},
-                    'Preparing'
-                )">
+                type="button"
+                class="order-action-btn preparing"
+                onclick="changeOrderStatus(${order.id}, 'Preparing')"
+            >
                 Start Preparing
             </button>
         `;
     }
 
-    if (order.status === "Preparing") {
-
+    if (status === "Preparing") {
         return `
             <button
-                class="btn-primary"
-                onclick="changeOrderStatus(
-                    ${order.id},
-                    'Ready'
-                )">
-                Mark Ready
+                type="button"
+                class="order-action-btn ready"
+                onclick="changeOrderStatus(${order.id}, 'Ready')"
+            >
+                Mark as Ready
             </button>
         `;
     }
 
-    if (order.status === "Ready") {
-
-        return `
-            <span class="ready-message">
-                Ready for Pickup
-            </span>
-        `;
-    }
-
-    return "";
+    return `
+        <span class="ready-label">
+            ✓ Ready for pickup
+        </span>
+    `;
 }
 
-async function changeOrderStatus(
-    orderId,
-    status
-) {
 
+async function changeOrderStatus(orderId, status) {
     try {
 
-        const response = await fetch(
-            `http://localhost:3000/api/orders/${orderId}/status`,
-            {
-                method: "PUT",
-
-                headers: {
-                    "Content-Type": "application/json"
-                },
-
-                body: JSON.stringify({
-                    status: status
-                })
-            }
-        );
+        const response =
+            await fetch(
+                `${API_URL}/orders/${orderId}/status`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        status
+                    })
+                }
+            );
 
         const data =
             await response.json();
 
         if (!response.ok) {
-
             throw new Error(
                 data.message ||
-                "Failed to update order"
+                "Unable to update order"
             );
         }
 
-        if (currentOrder.id === orderId) {
+        await loadStallOrders();
 
-            currentOrder.status =
-                data.order.status;
-
-            updateOrderDisplay();
+        if (currentUser &&
+            currentUser.role === "student") {
+            await loadStudentOrders();
         }
 
-        await renderStallOrders();
+    } catch (error) {
+
+        alert(error.message);
+    }
+}
+
+
+function updateDashboardStats(orders) {
+    const newOrders =
+        orders.filter(
+            order =>
+                order.status === "Placed"
+        ).length;
+
+    const preparing =
+        orders.filter(
+            order =>
+                order.status === "Preparing"
+        ).length;
+
+    const ready =
+        orders.filter(
+            order =>
+                order.status === "Ready"
+        ).length;
+
+    const today =
+        orders.filter(order => {
+
+            if (!order.created_at) {
+                return false;
+            }
+
+            const orderDate =
+                new Date(order.created_at);
+
+            const now =
+                new Date();
+
+            return (
+                orderDate.getDate() ===
+                    now.getDate() &&
+                orderDate.getMonth() ===
+                    now.getMonth() &&
+                orderDate.getFullYear() ===
+                    now.getFullYear()
+            );
+
+        }).length;
+
+    document.getElementById(
+        "newOrdersCount"
+    ).textContent = newOrders;
+
+    document.getElementById(
+        "preparingOrdersCount"
+    ).textContent = preparing;
+
+    document.getElementById(
+        "readyOrdersCount"
+    ).textContent = ready;
+
+    document.getElementById(
+        "todayOrdersCount"
+    ).textContent = today;
+}
+
+
+function renderStallOrders(filter = "all", button = null) {
+    document
+        .querySelectorAll(".order-tab")
+        .forEach(tab =>
+            tab.classList.remove("active")
+        );
+
+    if (button) {
+        button.classList.add("active");
+    }
+
+    fetch(`${API_URL}/orders`)
+        .then(response =>
+            response.json()
+        )
+        .then(orders => {
+
+            let filtered = orders;
+
+            if (filter !== "all") {
+                filtered =
+                    orders.filter(
+                        order =>
+                            order.status === filter
+                    );
+            }
+
+            const container =
+                document.getElementById(
+                    "stallOrdersList"
+                );
+
+            if (!container) {
+                return;
+            }
+
+            if (!filtered.length) {
+
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">✓</div>
+                        <h3>No matching orders</h3>
+                        <p>
+                            There are no orders in this category.
+                        </p>
+                    </div>
+                `;
+
+                return;
+            }
+
+            container.innerHTML =
+                filtered
+                    .sort(
+                        (a, b) =>
+                            Number(b.id) -
+                            Number(a.id)
+                    )
+                    .map(order =>
+                        createOrderCard(order)
+                    )
+                    .join("");
+
+        })
+        .catch(error =>
+            console.error(error)
+        );
+}
+
+
+
+/* =========================
+   INVENTORY
+========================= */
+
+async function loadInventory() {
+    try {
+
+        const response =
+            await fetch(
+                `${API_URL}/inventory`
+            );
+
+        if (!response.ok) {
+            throw new Error(
+                "Failed to load inventory"
+            );
+        }
+
+        inventoryData =
+            await response.json();
+
+        updateInventorySummary();
+        renderInventory();
+        renderDashboardInventory();
+
+        if (menuData.length) {
+            renderMenu();
+        }
 
     } catch (error) {
 
         console.error(
-            "Error updating order:",
+            "Inventory error:",
             error
         );
-
-        alert(
-            "Unable to update order status."
-        );
     }
 }
 
-function updateDashboardStats(orders) {
 
-    let newOrders = 0;
-    let preparing = 0;
-    let ready = 0;
+function updateInventorySummary() {
+    const totalItems =
+        inventoryData.length;
 
-    orders.forEach(order => {
-
-        if (order.status === "Placed") {
-            newOrders++;
-        }
-
-        if (order.status === "Preparing") {
-            preparing++;
-        }
-
-        if (order.status === "Ready") {
-            ready++;
-        }
-    });
-
-    const newOrdersElement =
-        document.getElementById("newOrders");
-
-    const preparingElement =
-        document.getElementById("preparingOrders");
-
-    const readyElement =
-        document.getElementById("readyOrders");
-
-    const todayOrdersElement =
-        document.getElementById("todayOrders");
-
-    if (newOrdersElement) {
-        newOrdersElement.textContent =
-            newOrders;
-    }
-
-    if (preparingElement) {
-        preparingElement.textContent =
-            preparing;
-    }
-
-    if (readyElement) {
-        readyElement.textContent =
-            ready;
-    }
-
-    if (todayOrdersElement) {
-        todayOrdersElement.textContent =
-            orders.length;
-    }
-}
-
-async function renderInventory() {
-
-    const inventoryGrid =
-        document.getElementById("inventoryGrid");
-
-    if (!inventoryGrid) return;
-
-    try {
-
-        const response = await fetch(
-            "http://localhost:3000/api/inventory"
+    const totalStock =
+        inventoryData.reduce(
+            (sum, item) =>
+                sum + Number(item.stock),
+            0
         );
 
-        if (!response.ok) {
+    const lowStock =
+        inventoryData.filter(
+            item =>
+                Number(item.stock) <=
+                Number(item.low_stock_limit)
+        ).length;
 
-            throw new Error(
-                "Failed to fetch inventory"
-            );
-        }
+    document.getElementById(
+        "inventoryTotalItems"
+    ).textContent = totalItems;
 
-        const inventory =
-            await response.json();
+    document.getElementById(
+        "inventoryTotalStock"
+    ).textContent = totalStock;
 
-        inventoryData = inventory;
+    document.getElementById(
+        "inventoryLowStock"
+    ).textContent = lowStock;
+}
 
-        renderMenu();
 
-        inventoryGrid.innerHTML =
-            inventory.map(item => {
+function renderInventory() {
+    const container =
+        document.getElementById(
+            "inventoryList"
+        );
 
-                let stockClass = "stock-good";
-                let stockText = "In Stock";
+    if (!container) {
+        return;
+    }
 
-                if (item.stock === 0) {
+    if (!inventoryData.length) {
 
-                    stockClass = "stock-out";
-                    stockText = "Out of Stock";
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📦</div>
+                <h3>No inventory data</h3>
+                <p>Inventory information will appear here.</p>
+            </div>
+        `;
 
-                } else if (
-                    item.stock <=
-                    item.low_stock_limit
-                ) {
+        return;
+    }
 
-                    stockClass = "stock-low";
-                    stockText = "Low Stock";
+    container.innerHTML =
+        inventoryData
+            .map(item => {
+
+                const stock =
+                    Number(item.stock);
+
+                const limit =
+                    Number(item.low_stock_limit);
+
+                let status = "In Stock";
+                let statusClass = "in-stock";
+
+                if (stock <= 0) {
+                    status = "Out of Stock";
+                    statusClass = "out-stock";
+                } else if (stock <= limit) {
+                    status = "Low Stock";
+                    statusClass = "low-stock";
                 }
 
+                const percentage =
+                    Math.max(
+                        0,
+                        Math.min(
+                            100,
+                            (stock / Math.max(limit * 4, 1)) *
+                            100
+                        )
+                    );
+
                 return `
-                    <div class="inventory-card">
+                    <div class="inventory-row">
 
-                        <div>
-                            <strong>
-                                ${item.name}
-                            </strong>
+                        <div class="inventory-item-name">
 
-                            <p>
-                                Stock:
-                                ${item.stock}
-                            </p>
+                            <div class="inventory-icon">
+                                ${getFoodEmoji(item.name)}
+                            </div>
+
+                            <div>
+                                <strong>
+                                    ${escapeHtml(item.name)}
+                                </strong>
+
+                                <span>
+                                    Item #${item.item_id}
+                                </span>
+                            </div>
+
                         </div>
 
-                        <span class="${stockClass}">
-                            ${stockText}
+
+                        <div class="inventory-stock">
+
+                            <div class="stock-top">
+
+                                <strong>
+                                    ${stock}
+                                </strong>
+
+                                <span>
+                                    units
+                                </span>
+
+                            </div>
+
+                            <div class="stock-bar">
+
+                                <span
+                                    style="width: ${percentage}%"
+                                ></span>
+
+                            </div>
+
+                        </div>
+
+
+                        <span class="inventory-status ${statusClass}">
+                            ${status}
                         </span>
 
                     </div>
                 `;
+            })
+            .join("");
+}
 
-            }).join("");
+
+function renderDashboardInventory() {
+    const container =
+        document.getElementById(
+            "dashboardInventory"
+        );
+
+    if (!container) {
+        return;
+    }
+
+    const preview =
+        inventoryData.slice(0, 5);
+
+    if (!preview.length) {
+        container.innerHTML = `
+            <div class="empty-state compact-empty">
+                <div class="empty-icon">📦</div>
+                <h3>No inventory</h3>
+            </div>
+        `;
+
+        return;
+    }
+
+    container.innerHTML =
+        preview
+            .map(item => {
+
+                const stock =
+                    Number(item.stock);
+
+                const limit =
+                    Number(item.low_stock_limit);
+
+                let status = "In Stock";
+                let className = "in-stock";
+
+                if (stock <= 0) {
+                    status = "Out of Stock";
+                    className = "out-stock";
+                } else if (stock <= limit) {
+                    status = "Low Stock";
+                    className = "low-stock";
+                }
+
+                return `
+                    <div class="inventory-preview-row">
+
+                        <div class="inventory-preview-name">
+
+                            <span class="inventory-mini-icon">
+                                ${getFoodEmoji(item.name)}
+                            </span>
+
+                            <strong>
+                                ${escapeHtml(item.name)}
+                            </strong>
+
+                        </div>
+
+                        <strong>
+                            ${stock}
+                        </strong>
+
+                        <span class="inventory-status ${className}">
+                            ${status}
+                        </span>
+
+                    </div>
+                `;
+            })
+            .join("");
+}
+
+
+
+/* =========================
+   ANALYTICS
+========================= */
+
+async function loadAnalytics() {
+    try {
+
+        const response =
+            await fetch(
+                `${API_URL}/analytics`
+            );
+
+        if (!response.ok) {
+            throw new Error(
+                "Failed to load analytics"
+            );
+        }
+
+        const data =
+            await response.json();
+
+        renderAnalytics(data);
 
     } catch (error) {
 
         console.error(
-            "Error loading inventory:",
+            "Analytics error:",
             error
         );
-
-        inventoryGrid.innerHTML = `
-            <div class="empty-state">
-                Unable to load inventory.
-            </div>
-        `;
     }
 }
 
-function showStudent() {
 
-    document
-        .getElementById("studentView")
-        .classList.remove("hidden");
+function renderAnalytics(data) {
+    document.getElementById(
+        "analyticsTotalOrders"
+    ).textContent =
+        data.totalOrders || 0;
 
-    document
-        .getElementById("stallView")
-        .classList.add("hidden");
+    document.getElementById(
+        "analyticsRevenue"
+    ).textContent =
+        `₹${Number(
+            data.totalRevenue || 0
+        ).toFixed(0)}`;
 
-    document
-        .querySelectorAll(".role-btn")[0]
-        .classList.add("active");
+    const topItem =
+        data.popularItems &&
+        data.popularItems.length
+            ? data.popularItems[0].name
+            : "—";
 
-    document
-        .querySelectorAll(".role-btn")[1]
-        .classList.remove("active");
+    document.getElementById(
+        "analyticsTopItem"
+    ).textContent = topItem;
+
+
+    const popularContainer =
+        document.getElementById(
+            "popularItemsList"
+        );
+
+    if (popularContainer) {
+
+        if (
+            !data.popularItems ||
+            !data.popularItems.length
+        ) {
+
+            popularContainer.innerHTML = `
+                <div class="empty-state compact-empty">
+                    <h3>No sales data yet</h3>
+                </div>
+            `;
+
+        } else {
+
+            popularContainer.innerHTML =
+                data.popularItems
+                    .map(
+                        (item, index) => `
+                            <div class="popular-row">
+
+                                <div class="popular-rank">
+                                    ${index + 1}
+                                </div>
+
+                                <div class="popular-row-icon">
+                                    ${getFoodEmoji(item.name)}
+                                </div>
+
+                                <div class="popular-row-info">
+
+                                    <strong>
+                                        ${escapeHtml(item.name)}
+                                    </strong>
+
+                                    <span>
+                                        ${item.quantity} sold
+                                    </span>
+
+                                </div>
+
+                            </div>
+                        `
+                    )
+                    .join("");
+        }
+    }
+
+
+    const statusContainer =
+        document.getElementById(
+            "orderStatusList"
+        );
+
+    if (statusContainer) {
+
+        const statuses =
+            data.ordersByStatus || [];
+
+        if (!statuses.length) {
+
+            statusContainer.innerHTML = `
+                <div class="empty-state compact-empty">
+                    <h3>No order data yet</h3>
+                </div>
+            `;
+
+        } else {
+
+            const total =
+                statuses.reduce(
+                    (sum, item) =>
+                        sum + Number(item.count),
+                    0
+                );
+
+            statusContainer.innerHTML =
+                statuses
+                    .map(item => {
+
+                        const percentage =
+                            total > 0
+                                ? (
+                                    Number(item.count) /
+                                    total
+                                ) * 100
+                                : 0;
+
+                        return `
+                            <div class="status-row">
+
+                                <div class="status-row-top">
+
+                                    <span>
+                                        ${item.status}
+                                    </span>
+
+                                    <strong>
+                                        ${item.count}
+                                    </strong>
+
+                                </div>
+
+                                <div class="status-progress">
+                                    <span
+                                        style="width: ${percentage}%"
+                                    ></span>
+                                </div>
+
+                            </div>
+                        `;
+                    })
+                    .join("");
+        }
+    }
 }
 
-function showStall() {
 
-    document
-        .getElementById("studentView")
-        .classList.add("hidden");
 
-    document
-        .getElementById("stallView")
-        .classList.remove("hidden");
+/* =========================
+   HELPERS
+========================= */
 
-    document
-        .querySelectorAll(".role-btn")[0]
-        .classList.remove("active");
+function formatOrderDate(dateValue) {
+    if (!dateValue) {
+        return "";
+    }
 
-    document
-        .querySelectorAll(".role-btn")[1]
-        .classList.add("active");
+    const date =
+        new Date(dateValue);
 
-    renderStallOrders();
-    renderInventory();
+    if (Number.isNaN(date.getTime())) {
+        return "";
+    }
+
+    return date.toLocaleString();
 }
 
-renderMenu();
-updateCart();
-renderStallOrders();
-renderInventory();
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+
+
+/* =========================
+   INITIALIZATION
+========================= */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+        selectLoginRole("student");
+
+        checkExistingLogin();
+
+    }
+);
